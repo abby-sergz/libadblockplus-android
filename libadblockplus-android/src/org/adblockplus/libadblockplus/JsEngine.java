@@ -88,11 +88,6 @@ public final class JsEngine implements Disposable
     setDefaultFileSystem(this.ptr, basePath);
   }
 
-  public void setDefaultLogSystem()
-  {
-    setDefaultLogSystem(this.ptr);
-  }
-
   public void setWebRequest(final WebRequest webRequest)
   {
     setWebRequest(this.ptr, webRequest.ptr);
@@ -148,8 +143,6 @@ public final class JsEngine implements Disposable
   private final static native void triggerEvent(long ptr, String eventName, long[] args);
 
   private final static native void setDefaultFileSystem(long ptr, String basePath);
-
-  private final static native void setDefaultLogSystem(long ptr);
 
   private final static native void setWebRequest(long ptr, long webRequestPtr);
 

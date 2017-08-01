@@ -152,19 +152,6 @@ static void JNICALL JniSetDefaultFileSystem(JNIEnv* env, jclass clazz, jlong ptr
   CATCH_AND_THROW(env)
 }
 
-static void JNICALL JniSetDefaultLogSystem(JNIEnv* env, jclass clazz, jlong ptr)
-{
-  AdblockPlus::JsEngine& jsEngine = GetJsEngineRef(ptr);
-
-  try
-  {
-    AdblockPlus::LogSystemPtr logSystem(new AdblockPlus::DefaultLogSystem());
-
-    jsEngine.SetLogSystem(logSystem);
-  }
-  CATCH_AND_THROW(env)
-}
-
 static void JNICALL JniSetWebRequest(JNIEnv* env, jclass clazz, jlong ptr, jlong webRequestPtr)
 {
   AdblockPlus::JsEngine& jsEngine = GetJsEngineRef(ptr);
@@ -230,7 +217,6 @@ static JNINativeMethod methods[] =
   { (char*)"evaluate", (char*)"(JLjava/lang/String;Ljava/lang/String;)" TYP("JsValue"), (void*)JniEvaluate },
 
   { (char*)"setDefaultFileSystem", (char*)"(JLjava/lang/String;)V", (void*)JniSetDefaultFileSystem },
-  { (char*)"setDefaultLogSystem", (char*)"(J)V", (void*)JniSetDefaultLogSystem },
   { (char*)"setWebRequest", (char*)"(JJ)V", (void*)JniSetWebRequest },
 
   { (char*)"newValue", (char*)"(JJ)" TYP("JsValue"), (void*)JniNewLongValue },
