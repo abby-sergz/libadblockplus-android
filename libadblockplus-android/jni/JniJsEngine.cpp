@@ -39,7 +39,8 @@ static AdblockPlus::JsEngine& GetJsEngineRef(jlong ptr)
   return *JniLongToTypePtr<JniJsEngine>(ptr)->jsEngine;
 }
 
-static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo, jlong logSystemPtr)
+static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo,
+ jlong webRequestPtr, jlong logSystemPtr)
 {
   AdblockPlus::AppInfo appInfo;
 
@@ -51,6 +52,9 @@ static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo, jlong 
     JniJsEngine* jniJsEngine = new JniJsEngine();
     jniJsEngine->timer = timer.get();
     jniJsEngine->jsEngine = AdblockPlus::JsEngine::New(appInfo, std::move(timer));
+    if (webRequestPtr)
+      jniJsEngine->jsEngine->SetWebRequest(*JniLongToTypePtr<AdblockPlus::WebRequestSharedPtr>(webRequestPtr));
+
     if (logSystemPtr)
       jniJsEngine->jsEngine->SetLogSystem(*JniLongToTypePtr<AdblockPlus::LogSystemPtr>(logSystemPtr));
     return JniPtrToLong(jniJsEngine);
@@ -152,19 +156,6 @@ static void JNICALL JniSetDefaultFileSystem(JNIEnv* env, jclass clazz, jlong ptr
   CATCH_AND_THROW(env)
 }
 
-static void JNICALL JniSetWebRequest(JNIEnv* env, jclass clazz, jlong ptr, jlong webRequestPtr)
-{
-  AdblockPlus::JsEngine& jsEngine = GetJsEngineRef(ptr);
-
-  try
-  {
-    auto& webRequest = *JniLongToTypePtr<AdblockPlus::WebRequestSharedPtr>(webRequestPtr);
-
-    jsEngine.SetWebRequest(webRequest);
-  }
-  CATCH_AND_THROW(env)
-}
-
 static jobject JNICALL JniNewLongValue(JNIEnv* env, jclass clazz, jlong ptr, jlong value)
 {
   AdblockPlus::JsEngine& jsEngine = GetJsEngineRef(ptr);
@@ -207,7 +198,7 @@ static jobject JNICALL JniNewStringValue(JNIEnv* env, jclass clazz, jlong ptr, j
 
 static JNINativeMethod methods[] =
 {
-  { (char*)"ctor", (char*)"(" TYP("AppInfo") "J)J", (void*)JniCtor },
+  { (char*)"ctor", (char*)"(" TYP("AppInfo") "JJ)J", (void*)JniCtor },
   { (char*)"dtor", (char*)"(J)V", (void*)JniDtor },
 
   { (char*)"setEventCallback", (char*)"(JLjava/lang/String;J)V", (void*)JniSetEventCallback },
@@ -217,7 +208,6 @@ static JNINativeMethod methods[] =
   { (char*)"evaluate", (char*)"(JLjava/lang/String;Ljava/lang/String;)" TYP("JsValue"), (void*)JniEvaluate },
 
   { (char*)"setDefaultFileSystem", (char*)"(JLjava/lang/String;)V", (void*)JniSetDefaultFileSystem },
-  { (char*)"setWebRequest", (char*)"(JJ)V", (void*)JniSetWebRequest },
 
   { (char*)"newValue", (char*)"(JJ)" TYP("JsValue"), (void*)JniNewLongValue },
   { (char*)"newValue", (char*)"(JZ)" TYP("JsValue"), (void*)JniNewBooleanValue },

@@ -24,6 +24,7 @@ import org.adblockplus.libadblockplus.HeaderEntry;
 import org.adblockplus.libadblockplus.IsAllowedConnectionCallback;
 import org.adblockplus.libadblockplus.ServerResponse;
 import org.adblockplus.libadblockplus.Subscription;
+import org.adblockplus.libadblockplus.WebRequest;
 import org.adblockplus.libadblockplus.android.AndroidWebRequest;
 import org.junit.Test;
 
@@ -94,13 +95,17 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
   @Override
   protected void setUp() throws Exception
   {
+    request = new TestRequest();
     super.setUp();
 
-    request = new TestRequest();
-    jsEngine.setWebRequest(request);
     callback = new TestCallback();
-
     filterEngine = new FilterEngine(jsEngine, callback);
+  }
+
+  @Override
+  protected WebRequest createWebRequest()
+  {
+    return request;
   }
 
   private void updateSubscriptions()
