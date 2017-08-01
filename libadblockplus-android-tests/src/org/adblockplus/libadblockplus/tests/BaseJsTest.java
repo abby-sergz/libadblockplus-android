@@ -20,6 +20,7 @@ package org.adblockplus.libadblockplus.tests;
 import org.adblockplus.libadblockplus.AppInfo;
 import org.adblockplus.libadblockplus.JsEngine;
 import org.adblockplus.libadblockplus.LazyLogSystem;
+import org.adblockplus.libadblockplus.LogSystem;
 import org.adblockplus.libadblockplus.ThrowingWebRequest;
 
 import android.content.Context;
@@ -34,10 +35,14 @@ public abstract class BaseJsTest extends InstrumentationTestCase
   {
     super.setUp();
 
-    jsEngine = new JsEngine(AppInfo.builder().build());
-    jsEngine.setDefaultLogSystem();
+    jsEngine = new JsEngine(AppInfo.builder().build(), createLogSystem());
     jsEngine.setDefaultFileSystem(getContext().getFilesDir().getAbsolutePath());
     jsEngine.setWebRequest(new ThrowingWebRequest());
+  }
+
+  protected LogSystem createLogSystem()
+  {
+    return null;
   }
 
   protected Context getContext()

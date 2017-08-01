@@ -39,7 +39,7 @@ static AdblockPlus::JsEngine& GetJsEngineRef(jlong ptr)
   return *JniLongToTypePtr<JniJsEngine>(ptr)->jsEngine;
 }
 
-static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo)
+static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo, jlong logSystemPtr)
 {
   AdblockPlus::AppInfo appInfo;
 
@@ -51,6 +51,8 @@ static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo)
     JniJsEngine* jniJsEngine = new JniJsEngine();
     jniJsEngine->timer = timer.get();
     jniJsEngine->jsEngine = AdblockPlus::JsEngine::New(appInfo, std::move(timer));
+    if (logSystemPtr)
+      jniJsEngine->jsEngine->SetLogSystem(*JniLongToTypePtr<AdblockPlus::LogSystemPtr>(logSystemPtr));
     return JniPtrToLong(jniJsEngine);
   }
   CATCH_THROW_AND_RETURN(env, 0)
@@ -163,19 +165,6 @@ static void JNICALL JniSetDefaultLogSystem(JNIEnv* env, jclass clazz, jlong ptr)
   CATCH_AND_THROW(env)
 }
 
-static void JNICALL JniSetLogSystem(JNIEnv* env, jclass clazz, jlong ptr, jlong logSystemPtr)
-{
-  AdblockPlus::JsEngine& jsEngine = GetJsEngineRef(ptr);
-
-  try
-  {
-    AdblockPlus::LogSystemPtr logSystem = *JniLongToTypePtr<AdblockPlus::LogSystemPtr>(logSystemPtr);
-
-    jsEngine.SetLogSystem(logSystem);
-  }
-  CATCH_AND_THROW(env)
-}
-
 static void JNICALL JniSetWebRequest(JNIEnv* env, jclass clazz, jlong ptr, jlong webRequestPtr)
 {
   AdblockPlus::JsEngine& jsEngine = GetJsEngineRef(ptr);
@@ -231,7 +220,7 @@ static jobject JNICALL JniNewStringValue(JNIEnv* env, jclass clazz, jlong ptr, j
 
 static JNINativeMethod methods[] =
 {
-  { (char*)"ctor", (char*)"(" TYP("AppInfo") ")J", (void*)JniCtor },
+  { (char*)"ctor", (char*)"(" TYP("AppInfo") "J)J", (void*)JniCtor },
   { (char*)"dtor", (char*)"(J)V", (void*)JniDtor },
 
   { (char*)"setEventCallback", (char*)"(JLjava/lang/String;J)V", (void*)JniSetEventCallback },
@@ -241,7 +230,6 @@ static JNINativeMethod methods[] =
   { (char*)"evaluate", (char*)"(JLjava/lang/String;Ljava/lang/String;)" TYP("JsValue"), (void*)JniEvaluate },
 
   { (char*)"setDefaultFileSystem", (char*)"(JLjava/lang/String;)V", (void*)JniSetDefaultFileSystem },
-  { (char*)"setLogSystem", (char*)"(JJ)V", (void*)JniSetLogSystem },
   { (char*)"setDefaultLogSystem", (char*)"(J)V", (void*)JniSetDefaultLogSystem },
   { (char*)"setWebRequest", (char*)"(JJ)V", (void*)JniSetWebRequest },
 
