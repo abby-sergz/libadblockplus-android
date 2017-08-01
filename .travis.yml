@@ -1,0 +1,41 @@
+language: android
+
+python: '2.7'
+
+android:
+  components:
+  - tools
+  - platform-tools
+  - extra-android-m2repository
+  - build-tools-25.0.0
+  - android-16
+  - android-21
+  - sys-img-armeabi-v7a-android-21
+
+addons:
+  apt:
+    packages:
+    - libcurl4-openssl-dev
+
+env:
+  matrix:
+  - ANDROID_API=android-21 ANDROID_ABI=armeabi-v7a
+  - ANDROID_API=android-21 ANDROID_ABI=x86
+
+before_install:
+  - ./ensure_dependencies.py
+  - mkdir third_party
+  - wget http://dl.google.com/android/ndk/android-ndk-r10d-linux-x86_64.bin -O third_party/android-ndk-r10d-linux-x86_64.bin
+  - pushd third_party && chmod +x android-ndk-r10d-linux-x86_64.bin && ./android-ndk-r10d-linux-x86_64.bin > /dev/null && popd
+  - echo ndk.dir=${TRAVIS_BUILD_DIR}/third_party/android-ndk-r10d >> local.properties
+
+before_script:
+  - echo no | android create avd --force -n test -t ${ANDROID_API} --abi ${ANDROID_ABI}
+  - emulator -avd test -no-audio -no-window &
+  - android-wait-for-emulator
+  - adb shell input keyevent 82 &
+
+script: ./gradlew build connectedCheck --stacktrace
+
+notifications:
+  email: false
