@@ -40,7 +40,7 @@ static AdblockPlus::JsEngine& GetJsEngineRef(jlong ptr)
 }
 
 static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo,
- jlong webRequestPtr, jlong logSystemPtr)
+  jstring fileSystemBasePath, jlong webRequestPtr, jlong logSystemPtr)
 {
   AdblockPlus::AppInfo appInfo;
 
@@ -57,6 +57,14 @@ static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo,
 
     if (logSystemPtr)
       jniJsEngine->jsEngine->SetLogSystem(*JniLongToTypePtr<AdblockPlus::LogSystemPtr>(logSystemPtr));
+
+    if (fileSystemBasePath)
+    {
+      auto fileSystem = std::make_shared<AdblockPlus::DefaultFileSystemSync>();
+      std::string basePath = JniJavaToStdString(env, fileSystemBasePath);
+      fileSystem->SetBasePath(basePath);
+      jniJsEngine->jsEngine->SetFileSystem(fileSystem);
+    }
     return JniPtrToLong(jniJsEngine);
   }
   CATCH_THROW_AND_RETURN(env, 0)
@@ -140,22 +148,6 @@ static void JNICALL JniTriggerEvent(JNIEnv* env, jclass clazz, jlong ptr, jstrin
   CATCH_AND_THROW(env)
 }
 
-static void JNICALL JniSetDefaultFileSystem(JNIEnv* env, jclass clazz, jlong ptr, jstring jBasePath)
-{
-  AdblockPlus::JsEngine& jsEngine = GetJsEngineRef(ptr);
-
-  try
-  {
-    auto fileSystem = std::make_shared<AdblockPlus::DefaultFileSystemSync>();
-
-    std::string basePath = JniJavaToStdString(env, jBasePath);
-    fileSystem->SetBasePath(basePath);
-
-    jsEngine.SetFileSystem(fileSystem);
-  }
-  CATCH_AND_THROW(env)
-}
-
 static jobject JNICALL JniNewLongValue(JNIEnv* env, jclass clazz, jlong ptr, jlong value)
 {
   AdblockPlus::JsEngine& jsEngine = GetJsEngineRef(ptr);
@@ -198,7 +190,7 @@ static jobject JNICALL JniNewStringValue(JNIEnv* env, jclass clazz, jlong ptr, j
 
 static JNINativeMethod methods[] =
 {
-  { (char*)"ctor", (char*)"(" TYP("AppInfo") "JJ)J", (void*)JniCtor },
+  { (char*)"ctor", (char*)"(" TYP("AppInfo") "Ljava/lang/String;JJ)J", (void*)JniCtor },
   { (char*)"dtor", (char*)"(J)V", (void*)JniDtor },
 
   { (char*)"setEventCallback", (char*)"(JLjava/lang/String;J)V", (void*)JniSetEventCallback },
@@ -206,8 +198,6 @@ static JNINativeMethod methods[] =
   { (char*)"triggerEvent", (char*)"(JLjava/lang/String;[J)V", (void*)JniTriggerEvent },
 
   { (char*)"evaluate", (char*)"(JLjava/lang/String;Ljava/lang/String;)" TYP("JsValue"), (void*)JniEvaluate },
-
-  { (char*)"setDefaultFileSystem", (char*)"(JLjava/lang/String;)V", (void*)JniSetDefaultFileSystem },
 
   { (char*)"newValue", (char*)"(JJ)" TYP("JsValue"), (void*)JniNewLongValue },
   { (char*)"newValue", (char*)"(JZ)" TYP("JsValue"), (void*)JniNewBooleanValue },

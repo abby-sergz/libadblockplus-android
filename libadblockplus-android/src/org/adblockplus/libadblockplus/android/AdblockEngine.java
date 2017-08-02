@@ -254,9 +254,7 @@ public final class AdblockEngine
     private void createEngines()
     {
       engine.logSystem = new AndroidLogSystem();
-      engine.jsEngine = new JsEngine(appInfo, engine.webRequest, engine.logSystem);
-      engine.jsEngine.setDefaultFileSystem(basePath);
-
+      engine.jsEngine = new JsEngine(appInfo, basePath, engine.webRequest, engine.logSystem);
       engine.filterEngine = new FilterEngine(engine.jsEngine, isAllowedConnectionCallback);
     }
   }
