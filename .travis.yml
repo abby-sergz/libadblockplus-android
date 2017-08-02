@@ -1,7 +1,5 @@
 language: android
 
-python: '2.7'
-
 android:
   components:
   - tools
@@ -12,15 +10,9 @@ android:
   - android-21
   - sys-img-${ANDROID_ABI}-${ANDROID_API}
 
-addons:
-  apt:
-    packages:
-    - libcurl4-openssl-dev
-
 env:
   matrix:
   - ANDROID_API=android-21 ANDROID_ABI=armeabi-v7a
-  - ANDROID_API=android-21 ANDROID_ABI=x86
 
 before_install:
   - ./ensure_dependencies.py
