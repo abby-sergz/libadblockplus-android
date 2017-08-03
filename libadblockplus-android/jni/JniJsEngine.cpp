@@ -40,7 +40,8 @@ static AdblockPlus::JsEngine& GetJsEngineRef(jlong ptr)
 }
 
 static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo,
-  jstring fileSystemBasePath, jlong webRequestPtr, jlong logSystemPtr)
+  jobject jTimer, jstring fileSystemBasePath, jlong webRequestPtr,
+  jlong logSystemPtr)
 {
   AdblockPlus::AppInfo appInfo;
 
@@ -48,7 +49,9 @@ static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo,
 
   try
   {
-    AdblockPlus::TimerPtr timer = AdblockPlus::CreateDefaultTimer();
+    AdblockPlus::TimerPtr timer = jTimer ?
+      AdblockPlus::TimerPtr(new JniTimer(env, jTimer)) :
+      AdblockPlus::CreateDefaultTimer();
     JniJsEngine* jniJsEngine = new JniJsEngine();
     jniJsEngine->timer = timer.get();
     jniJsEngine->jsEngine = AdblockPlus::JsEngine::New(appInfo, std::move(timer));
@@ -190,7 +193,7 @@ static jobject JNICALL JniNewStringValue(JNIEnv* env, jclass clazz, jlong ptr, j
 
 static JNINativeMethod methods[] =
 {
-  { (char*)"ctor", (char*)"(" TYP("AppInfo") "Ljava/lang/String;JJ)J", (void*)JniCtor },
+  { (char*)"ctor", (char*)"(" TYP("AppInfo") TYP("Timer") "Ljava/lang/String;JJ)J", (void*)JniCtor },
   { (char*)"dtor", (char*)"(J)V", (void*)JniDtor },
 
   { (char*)"setEventCallback", (char*)"(JLjava/lang/String;J)V", (void*)JniSetEventCallback },

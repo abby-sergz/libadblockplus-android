@@ -49,6 +49,7 @@ LOCAL_SRC_FILES := JniLibrary.cpp
 LOCAL_SRC_FILES += JniJsEngine.cpp JniFilterEngine.cpp JniJsValue.cpp
 LOCAL_SRC_FILES += JniFilter.cpp JniSubscription.cpp JniEventCallback.cpp
 LOCAL_SRC_FILES += JniLogSystem.cpp JniWebRequest.cpp
+LOCAL_SRC_FILES += JniTimer.cpp
 LOCAL_SRC_FILES += JniUpdateAvailableCallback.cpp JniUpdateCheckDoneCallback.cpp
 LOCAL_SRC_FILES += JniFilterChangeCallback.cpp JniCallbacks.cpp Utils.cpp
 LOCAL_SRC_FILES += JniNotification.cpp JniShowNotificationCallback.cpp

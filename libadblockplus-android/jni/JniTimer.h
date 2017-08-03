@@ -15,35 +15,13 @@
  * along with Adblock Plus.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.adblockplus.libadblockplus.tests;
+#ifndef JNITIMER_H
+#define JNITIMER_H
 
-import org.adblockplus.libadblockplus.AdblockPlusException;
+#include <jni.h>
 
-import org.junit.Test;
+void JniTimer_OnLoad(JavaVM* vm, JNIEnv* env, void* reserved);
 
-public class GlobalJsObjectTest extends BaseJsTest
-{
-  @Test
-  public void testSetTimeoutWithInvalidArgs()
-  {
-    try
-    {
-      jsEngine.evaluate("setTimeout()");
-      fail();
-    }
-    catch (AdblockPlusException e)
-    {
-      // ignored
-    }
+void JniTimer_OnUnload(JavaVM* vm, JNIEnv* env, void* reserved);
 
-    try
-    {
-      jsEngine.evaluate("setTimeout('', 1)");
-      fail();
-    }
-    catch (AdblockPlusException e)
-    {
-      // ignored
-    }
-  }
-}
+#endif /* JNITIMER_H */

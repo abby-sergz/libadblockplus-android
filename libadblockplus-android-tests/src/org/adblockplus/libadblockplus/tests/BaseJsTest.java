@@ -18,10 +18,12 @@
 package org.adblockplus.libadblockplus.tests;
 
 import org.adblockplus.libadblockplus.AppInfo;
+import org.adblockplus.libadblockplus.Timer;
 import org.adblockplus.libadblockplus.JsEngine;
 import org.adblockplus.libadblockplus.LazyLogSystem;
 import org.adblockplus.libadblockplus.LogSystem;
 import org.adblockplus.libadblockplus.ThrowingWebRequest;
+import org.adblockplus.libadblockplus.ThrowingTimer;
 import org.adblockplus.libadblockplus.WebRequest;
 
 import android.content.Context;
@@ -37,10 +39,17 @@ public abstract class BaseJsTest extends InstrumentationTestCase
   {
     super.setUp();
 
-    jsEngine = new JsEngine(AppInfo.builder().build(), getContext().getFilesDir().getAbsolutePath(), createWebRequest(),
+    jsEngine = new JsEngine(AppInfo.builder().build(),
+        createTimer(),
+        getContext().getFilesDir().getAbsolutePath(),
+        createWebRequest(),
         createLogSystem());
   }
 
+  protected Timer createTimer()
+  {
+    return new ThrowingTimer();
+  }
   protected LogSystem createLogSystem()
   {
     return null;

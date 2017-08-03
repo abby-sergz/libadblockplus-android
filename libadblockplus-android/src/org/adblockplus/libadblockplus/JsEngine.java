@@ -30,17 +30,31 @@ public final class JsEngine implements Disposable
     registerNatives();
   }
 
-  public JsEngine(final AppInfo appInfo, final String fileSystemBasePath, final WebRequest webRequest, final LogSystem logSystem)
+  public JsEngine(final AppInfo appInfo, Timer timer,
+                  final String fileSystemBasePath, final WebRequest webRequest,
+                  final LogSystem logSystem)
   {
-    this(ctor(appInfo, fileSystemBasePath, webRequest != null ? webRequest.ptr : 0, logSystem != null ? logSystem.ptr : 0));
+    this(ctor(appInfo, timer, fileSystemBasePath,
+        webRequest != null ? webRequest.ptr : 0,
+        logSystem != null ? logSystem.ptr : 0));
   }
 
-  public JsEngine(final AppInfo appInfo, final String fileSystemBasePath, final WebRequest webRequest)
+  public JsEngine(final AppInfo appInfo, final String fileSystemBasePath,
+                  final WebRequest webRequest, final LogSystem logSystem)
+  {
+    this(ctor(appInfo, /* timer */ null, fileSystemBasePath,
+        webRequest != null ? webRequest.ptr : 0,
+        logSystem != null ? logSystem.ptr : 0));
+  }
+
+  public JsEngine(final AppInfo appInfo, final String fileSystemBasePath,
+                  final WebRequest webRequest)
   {
     this(appInfo, fileSystemBasePath, webRequest, null);
   }
 
-  public JsEngine(final AppInfo appInfo, final String fileSystemBasePath, final LogSystem logSystem)
+  public JsEngine(final AppInfo appInfo, final String fileSystemBasePath,
+                  final LogSystem logSystem)
   {
     this(appInfo, fileSystemBasePath, /* webRequest */ null, logSystem);
   }
@@ -137,7 +151,7 @@ public final class JsEngine implements Disposable
 
   private final static native void registerNatives();
 
-  private final static native long ctor(AppInfo appInfo, String fileSystemBasePath, long webRequestPtr, long logSystemPtr);
+  private final static native long ctor(AppInfo appInfo, Timer timer, String fileSystemBasePath, long webRequestPtr, long logSystemPtr);
 
   private final static native void setEventCallback(long ptr, String eventName, long callback);
 

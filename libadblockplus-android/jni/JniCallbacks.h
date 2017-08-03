@@ -19,6 +19,7 @@
 #define JNICALLBACKS_H
 
 #include <AdblockPlus.h>
+#include <AdblockPlus/ITimer.h>
 #include "Utils.h"
 #include "JniJsValue.h"
 
@@ -106,6 +107,13 @@ class JniIsAllowedConnectionTypeCallback : public JniCallbackBase
 public:
   JniIsAllowedConnectionTypeCallback(JNIEnv* env, jobject callbackObject);
   bool Callback(const std::string* allowedConnectionType);
+};
+
+class JniTimer : public JniCallbackBase, public AdblockPlus::ITimer
+{
+public:
+  JniTimer(JNIEnv* env, jobject callbackObject);
+  void SetTimer(const std::chrono::milliseconds& timeout, const TimerCallback& timerCallback) override;
 };
 
 #endif /* JNICALLBACKS_H */
