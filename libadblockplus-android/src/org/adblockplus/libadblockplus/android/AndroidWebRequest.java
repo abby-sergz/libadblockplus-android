@@ -113,7 +113,7 @@ public class AndroidWebRequest extends WebRequest
   }
 
   @Override
-  public ServerResponse httpGET(final String urlStr, final List<HeaderEntry> headers)
+  public void httpGET(final String urlStr, final List<HeaderEntry> headers, GetCallback getCallback)
   {
     try
     {
@@ -182,7 +182,8 @@ public class AndroidWebRequest extends WebRequest
         response.setStatus(NsStatus.ERROR_FAILURE);
       }
       Log.d(TAG, "Downloading finished");
-      return response;
+      getCallback.call(response);
+      getCallback.dispose();
     }
     catch (final Throwable t)
     {

@@ -33,17 +33,8 @@ public class MockWebRequestTest extends BaseJsTest
   private class LocalMockWebRequest extends WebRequest
   {
     @Override
-    public ServerResponse httpGET(String url, List<HeaderEntry> headers)
+    public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
     {
-      try
-      {
-        Thread.sleep(50);
-      }
-      catch (InterruptedException e)
-      {
-        throw new RuntimeException(e);
-      }
-
       ServerResponse result = new ServerResponse();
       result.setStatus(ServerResponse.NsStatus.OK);
       result.setResponseStatus(123);
@@ -53,7 +44,8 @@ public class MockWebRequestTest extends BaseJsTest
         url + "\n" + 
         headers.get(0).getKey() + "\n" +
         headers.get(0).getValue());
-      return result;
+      getCallback.call(result);
+      getCallback.dispose();
     }
   }
 
@@ -133,8 +125,6 @@ public class MockWebRequestTest extends BaseJsTest
     jsEngine.evaluate(
       "_webRequest.GET('http://example.com/', {X: 'Y'}, function(result) {foo = result;} )");
     assertTrue(jsEngine.evaluate("this.foo").isUndefined());
-
-    Thread.sleep(200);
 
     assertEquals(
       ServerResponse.NsStatus.OK.getStatusCode(),

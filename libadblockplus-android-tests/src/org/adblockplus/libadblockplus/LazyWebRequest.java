@@ -22,11 +22,7 @@ import java.util.List;
 public class LazyWebRequest extends WebRequest
 {
   @Override
-  public ServerResponse httpGET(String url, List<HeaderEntry> headers)
+  public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
   {
-    while (true)
-    {
-
-    }
   }
 }

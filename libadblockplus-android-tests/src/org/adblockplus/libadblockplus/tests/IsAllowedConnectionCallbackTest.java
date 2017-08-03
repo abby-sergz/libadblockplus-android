@@ -46,10 +46,10 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
     }
 
     @Override
-    public ServerResponse httpGET(String url, List<HeaderEntry> headers)
+    public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
     {
       urls.add(url);
-      return super.httpGET(url, headers);
+      super.httpGET(url, headers, getCallback);
     }
   }
 

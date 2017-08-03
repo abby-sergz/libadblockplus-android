@@ -51,10 +51,10 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
     }
 
     @Override
-    public ServerResponse httpGET(String urlStr, List<HeaderEntry> headers)
+    public void httpGET(String urlStr, List<HeaderEntry> headers, GetCallback getCallback)
     {
       urls.add(urlStr);
-      return super.httpGET(urlStr, headers);
+      super.httpGET(urlStr, headers, getCallback);
     }
   }
 
@@ -106,7 +106,6 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
   @Override
   protected void setUp() throws Exception
   {
-
     request = new TestRequest();
     preloadMap = new HashMap<String, Integer>();
     storage = new TestStorage();

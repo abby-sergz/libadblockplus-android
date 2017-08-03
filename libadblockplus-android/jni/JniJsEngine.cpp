@@ -40,7 +40,7 @@ static AdblockPlus::JsEngine& GetJsEngineRef(jlong ptr)
 }
 
 static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo,
-  jobject jTimer, jstring fileSystemBasePath, jlong webRequestPtr,
+  jobject jTimer, jstring fileSystemBasePath, jobject jWebRequest,
   jlong logSystemPtr)
 {
   AdblockPlus::AppInfo appInfo;
@@ -52,11 +52,15 @@ static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jobject jAppInfo,
     AdblockPlus::TimerPtr timer = jTimer ?
       AdblockPlus::TimerPtr(new JniTimer(env, jTimer)) :
       AdblockPlus::CreateDefaultTimer();
+
+    auto webRequest = jWebRequest != nullptr ?
+                  AdblockPlus::WebRequestPtr(new JniWebRequest(env, jWebRequest)) :
+                  AdblockPlus::CreateDefaultWebRequest();
+
     JniJsEngine* jniJsEngine = new JniJsEngine();
     jniJsEngine->timer = timer.get();
-    jniJsEngine->jsEngine = AdblockPlus::JsEngine::New(appInfo, std::move(timer));
-    if (webRequestPtr)
-      jniJsEngine->jsEngine->SetWebRequest(*JniLongToTypePtr<AdblockPlus::WebRequestSharedPtr>(webRequestPtr));
+    jniJsEngine->jsEngine = AdblockPlus::JsEngine::New(appInfo, std::move(timer),
+      AdblockPlus::CreateDefaultFileSystem(), std::move(webRequest));
 
     if (logSystemPtr)
       jniJsEngine->jsEngine->SetLogSystem(*JniLongToTypePtr<AdblockPlus::LogSystemPtr>(logSystemPtr));
@@ -193,7 +197,7 @@ static jobject JNICALL JniNewStringValue(JNIEnv* env, jclass clazz, jlong ptr, j
 
 static JNINativeMethod methods[] =
 {
-  { (char*)"ctor", (char*)"(" TYP("AppInfo") TYP("Timer") "Ljava/lang/String;JJ)J", (void*)JniCtor },
+  { (char*)"ctor", (char*)"(" TYP("AppInfo") TYP("Timer") "Ljava/lang/String;" TYP("WebRequest") "J)J", (void*)JniCtor },
   { (char*)"dtor", (char*)"(J)V", (void*)JniDtor },
 
   { (char*)"setEventCallback", (char*)"(JLjava/lang/String;J)V", (void*)JniSetEventCallback },

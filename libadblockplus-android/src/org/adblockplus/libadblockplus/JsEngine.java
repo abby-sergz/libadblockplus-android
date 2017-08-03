@@ -35,7 +35,7 @@ public final class JsEngine implements Disposable
                   final LogSystem logSystem)
   {
     this(ctor(appInfo, timer, fileSystemBasePath,
-        webRequest != null ? webRequest.ptr : 0,
+        webRequest,
         logSystem != null ? logSystem.ptr : 0));
   }
 
@@ -43,7 +43,7 @@ public final class JsEngine implements Disposable
                   final WebRequest webRequest, final LogSystem logSystem)
   {
     this(ctor(appInfo, /* timer */ null, fileSystemBasePath,
-        webRequest != null ? webRequest.ptr : 0,
+        webRequest,
         logSystem != null ? logSystem.ptr : 0));
   }
 
@@ -151,7 +151,7 @@ public final class JsEngine implements Disposable
 
   private final static native void registerNatives();
 
-  private final static native long ctor(AppInfo appInfo, Timer timer, String fileSystemBasePath, long webRequestPtr, long logSystemPtr);
+  private final static native long ctor(AppInfo appInfo, Timer timer, String fileSystemBasePath, WebRequest webRequestr, long logSystemPtr);
 
   private final static native void setEventCallback(long ptr, String eventName, long callback);
 

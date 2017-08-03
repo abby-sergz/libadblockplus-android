@@ -109,8 +109,9 @@ public class AndroidWebRequestResourceWrapper extends WebRequest
   }
 
   @Override
-  public ServerResponse httpGET(String url, List<HeaderEntry> headers)
+  public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
   {
+    // XXX: run it asynchronously?
     // since parameters may vary we need to ignore them
     String urlWithoutParams = Utils.getUrlWithoutParams(url);
     Integer resourceId = urlToResourceIdMap.get(urlWithoutParams);
@@ -128,7 +129,9 @@ public class AndroidWebRequestResourceWrapper extends WebRequest
           listener.onIntercepted(url, resourceId);
         }
 
-        return response;
+        getCallback.call(response);
+        getCallback.dispose();
+        return;
       }
       else
       {
@@ -137,7 +140,7 @@ public class AndroidWebRequestResourceWrapper extends WebRequest
     }
 
     // delegate to wrapper request
-    return request.httpGET(url, headers);
+    request.httpGET(url, headers, getCallback);
   }
 
   protected String readResourceContent(int resourceId) throws IOException
@@ -194,13 +197,6 @@ public class AndroidWebRequestResourceWrapper extends WebRequest
     }
 
     return response;
-  }
-
-  @Override
-  public void dispose()
-  {
-    request.dispose();
-    super.dispose();
   }
 
   /**

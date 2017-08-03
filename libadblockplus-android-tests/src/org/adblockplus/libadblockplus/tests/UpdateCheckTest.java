@@ -42,15 +42,17 @@ public class UpdateCheckTest extends BaseJsTest
     public ServerResponse response = new ServerResponse();
 
     @Override
-    public ServerResponse httpGET(String url, List<HeaderEntry> headers)
+    public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
     {
       if (url.indexOf("easylist") >= 0)
       {
-        return super.httpGET(url, headers);
+        super.httpGET(url, headers, getCallback);
+        return;
       }
 
       previousRequestUrl = url;
-      return response;
+      getCallback.call(response);
+      getCallback.dispose();
     }
   }
 

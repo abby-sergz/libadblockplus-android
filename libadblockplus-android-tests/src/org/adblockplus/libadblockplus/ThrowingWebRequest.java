@@ -22,8 +22,9 @@ import java.util.List;
 public class ThrowingWebRequest extends WebRequest
 {
   @Override
-  public ServerResponse httpGET(String url, List<HeaderEntry> headers)
+  public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
   {
+    getCallback.dispose();
     throw new RuntimeException("Unexpected GET: " + url);
   }
 }

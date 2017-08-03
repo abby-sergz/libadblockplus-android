@@ -22,6 +22,7 @@ public final class ThrowingTimer implements Timer
   @Override
   public void setTimer(long timeoutMsec, Callback callback)
   {
+    callback.dispose();
     throw new RuntimeException("Unexpected timer: " + Long.toString(timeoutMsec));
   }
 }

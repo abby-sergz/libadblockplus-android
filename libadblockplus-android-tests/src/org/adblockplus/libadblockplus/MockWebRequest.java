@@ -23,8 +23,10 @@ public class MockWebRequest extends WebRequest
 {
   public ServerResponse response = new ServerResponse();
 
-  public ServerResponse httpGET(String url, List<HeaderEntry> headers)
+  @Override
+  public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
   {
-    return response;
+    getCallback.call(response);
+    getCallback.dispose();
   }
 }
