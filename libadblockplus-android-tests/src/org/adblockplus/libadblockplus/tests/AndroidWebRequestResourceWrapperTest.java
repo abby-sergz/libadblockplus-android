@@ -20,12 +20,18 @@ package org.adblockplus.libadblockplus.tests;
 import android.os.SystemClock;
 
 import org.adblockplus.libadblockplus.HeaderEntry;
+import org.adblockplus.libadblockplus.ImmediateSchedulerImpl;
+import org.adblockplus.libadblockplus.ManagedSchedulerImpl;
+import org.adblockplus.libadblockplus.MockTimer;
+import org.adblockplus.libadblockplus.Scheduler;
 import org.adblockplus.libadblockplus.ServerResponse;
 import org.adblockplus.libadblockplus.Subscription;
+import org.adblockplus.libadblockplus.Timer;
 import org.adblockplus.libadblockplus.WebRequest;
 import org.adblockplus.libadblockplus.android.AndroidWebRequest;
 import org.adblockplus.libadblockplus.android.AndroidWebRequestResourceWrapper;
 import org.adblockplus.libadblockplus.android.Utils;
+import org.adblockplus.libadblockplus.android.settings.BaseSettingsFragment;
 import org.adblockplus.libadblockplus.tests.test.R;
 import org.junit.Test;
 
@@ -36,12 +42,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.jar.Pack200;
 
 public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTest
 {
-  private static final int UPDATE_SUBSCRIPTIONS_WAIT_DELAY_MS = 5 * 1000; // 5s
-
-  private static final class TestRequest extends AndroidWebRequest
+  private static final class TestRequest extends WebRequest
   {
     private List<String> urls = new LinkedList<String>();
 
@@ -50,11 +55,15 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
       return urls;
     }
 
-    @Override
-    public void httpGET(String urlStr, List<HeaderEntry> headers, GetCallback getCallback)
+    public TestRequest()
     {
-      urls.add(urlStr);
-      super.httpGET(urlStr, headers, getCallback);
+    }
+
+    @Override
+    public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
+    {
+      urls.add(url);
+      getCallback.dispose();
     }
   }
 
@@ -102,25 +111,27 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
   private TestStorage storage;
   private AndroidWebRequestResourceWrapper wrapper;
   private TestWrapperListener wrapperListener;
-
-  @Override
-  protected void setUp() throws Exception
-  {
-    request = new TestRequest();
-    preloadMap = new HashMap<String, Integer>();
-    storage = new TestStorage();
-    wrapper = new AndroidWebRequestResourceWrapper(
-      getInstrumentation().getContext(), request, preloadMap, storage);
-    wrapperListener = new TestWrapperListener();
-    wrapper.setListener(wrapperListener);
-
-    super.setUp();
-  }
+  private ManagedSchedulerImpl webRequestScheduler;
+  private MockTimer timer;
 
   @Override
   protected WebRequest createWebRequest()
   {
+    webRequestScheduler = new ManagedSchedulerImpl();
+    request = new TestRequest();
+    preloadMap = new HashMap<String, Integer>();
+    storage = new TestStorage();
+    wrapper = new AndroidWebRequestResourceWrapper(
+        getInstrumentation().getContext(), webRequestScheduler, request, preloadMap, storage);
+    wrapperListener = new TestWrapperListener();
+    wrapper.setListener(wrapperListener);
     return wrapper;
+  }
+
+  @Override
+  protected Timer createTimer()
+  {
+    return timer = new MockTimer();
   }
 
   private void updateSubscriptions()
@@ -136,6 +147,11 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
         s.dispose();
       }
     }
+    // libadblockplus is using timer with zero timeout in order to implement Utils.runAsync
+    // what is used by adblockpluscore to schedule subscription updates.
+    timer.processImmediateTimers();
+    // now process all pending web requests
+    while(webRequestScheduler.processNextTask());
   }
 
   private List<String> getUrlsListWithoutParams(Collection<String> urlWithParams)
@@ -150,7 +166,6 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
 
   private void testIntercepted(final String preloadUrl, final int resourceId)
   {
-    preloadMap.clear();
     preloadMap.put(preloadUrl, resourceId);
 
     assertEquals(0, request.getUrls().size());
@@ -160,7 +175,6 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
     assertEquals(0, wrapperListener.getUrlsToResourceId().size());
 
     updateSubscriptions();
-    SystemClock.sleep(UPDATE_SUBSCRIPTIONS_WAIT_DELAY_MS);
 
     if (request.getUrls().size() > 0)
     {
@@ -216,7 +230,6 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
 
     // update #1 -  should be intercepted
     updateSubscriptions();
-    SystemClock.sleep(UPDATE_SUBSCRIPTIONS_WAIT_DELAY_MS);
 
     int requestsCount = request.getUrls().size();
     if (requestsCount > 0)
@@ -237,7 +250,6 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
     wrapperListener.getUrlsToResourceId().clear();
 
     updateSubscriptions();
-    SystemClock.sleep(UPDATE_SUBSCRIPTIONS_WAIT_DELAY_MS);
 
     assertTrue(request.getUrls().size() > requestsCount);
     List<String> requestsWithoutParams = getUrlsListWithoutParams(request.getUrls());
@@ -257,7 +269,6 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
     assertEquals(0, wrapperListener.getUrlsToResourceId().size());
 
     updateSubscriptions();
-    SystemClock.sleep(UPDATE_SUBSCRIPTIONS_WAIT_DELAY_MS);
 
     assertEquals(1, request.getUrls().size());
     List<String> requestUrlsWithoutParams = getUrlsListWithoutParams(request.getUrls());
@@ -291,7 +302,6 @@ public class AndroidWebRequestResourceWrapperTest extends FilterEngineGenericTes
     assertEquals(0, wrapperListener.getUrlsToResourceId().size());
 
     updateSubscriptions();
-    SystemClock.sleep(UPDATE_SUBSCRIPTIONS_WAIT_DELAY_MS);
 
     assertEquals(0, request.getUrls().size());
     assertEquals(2, storage.getInterceptedUrls().size());

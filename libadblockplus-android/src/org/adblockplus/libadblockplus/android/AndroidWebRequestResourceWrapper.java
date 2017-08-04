@@ -21,6 +21,8 @@ import android.content.SharedPreferences;
 import android.util.Log;
 
 import org.adblockplus.libadblockplus.HeaderEntry;
+import org.adblockplus.libadblockplus.ImmediateSchedulerImpl;
+import org.adblockplus.libadblockplus.Scheduler;
 import org.adblockplus.libadblockplus.ServerResponse;
 import org.adblockplus.libadblockplus.WebRequest;
 
@@ -79,6 +81,7 @@ public class AndroidWebRequestResourceWrapper extends WebRequest
   private Map<String, Integer> urlToResourceIdMap;
   private Storage storage;
   private Listener listener;
+  private final Scheduler scheduler;
 
   /**
    * Constructor
@@ -88,10 +91,13 @@ public class AndroidWebRequestResourceWrapper extends WebRequest
    *                           See AndroidWebRequestResourceWrapper.EASYLIST_... constants
    * @param storage Storage impl to remember served interceptions
    */
-  public AndroidWebRequestResourceWrapper(Context context, WebRequest request,
+  public AndroidWebRequestResourceWrapper(Context context,
+                                          Scheduler scheduler,
+                                          WebRequest request,
                                           Map<String, Integer> urlToResourceIdMap,
                                           Storage storage)
   {
+    this.scheduler = scheduler;
     this.context = context;
     this.request = request;
     this.urlToResourceIdMap = Collections.synchronizedMap(urlToResourceIdMap);
@@ -111,36 +117,42 @@ public class AndroidWebRequestResourceWrapper extends WebRequest
   @Override
   public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
   {
-    // XXX: run it asynchronously?
-    // since parameters may vary we need to ignore them
-    String urlWithoutParams = Utils.getUrlWithoutParams(url);
-    Integer resourceId = urlToResourceIdMap.get(urlWithoutParams);
-
-    if (resourceId != null)
+    scheduler.schedule(new AndroidWebRequest.SchedulerTask(url, headers, getCallback)
     {
-      if (!storage.contains(urlWithoutParams))
+      @Override
+      public void run()
       {
-        Log.w(TAG, "Intercepting request for " + url + " with resource #" + resourceId.intValue());
-        ServerResponse response = buildResourceContentResponse(resourceId);
-        storage.put(urlWithoutParams);
+        // since parameters may vary we need to ignore them
+        String urlWithoutParams = Utils.getUrlWithoutParams(url);
+        Integer resourceId = urlToResourceIdMap.get(urlWithoutParams);
 
-        if (listener != null)
+        if (resourceId != null)
         {
-          listener.onIntercepted(url, resourceId);
+          if (!storage.contains(urlWithoutParams))
+          {
+            Log.w(TAG, "Intercepting request for " + url + " with resource #" + resourceId.intValue());
+            ServerResponse response = buildResourceContentResponse(resourceId);
+            storage.put(urlWithoutParams);
+
+            if (listener != null)
+            {
+              listener.onIntercepted(url, resourceId);
+            }
+
+            getCallback.call(response);
+            getCallback.dispose();
+            return;
+          }
+          else
+          {
+            Log.d(TAG, "Skip intercepting");
+          }
         }
 
-        getCallback.call(response);
-        getCallback.dispose();
-        return;
+        // delegate to wrapper request
+        request.httpGET(url, headers, getCallback);
       }
-      else
-      {
-        Log.d(TAG, "Skip intercepting");
-      }
-    }
-
-    // delegate to wrapper request
-    request.httpGET(url, headers, getCallback);
+    });
   }
 
   protected String readResourceContent(int resourceId) throws IOException

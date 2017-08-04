@@ -17,10 +17,13 @@
 
 package org.adblockplus.libadblockplus.tests;
 
+import org.adblockplus.libadblockplus.ManagedSchedulerImpl;
+import org.adblockplus.libadblockplus.MockTimer;
 import org.adblockplus.libadblockplus.WebRequest;
 import org.adblockplus.libadblockplus.android.AndroidWebRequest;
 import org.adblockplus.libadblockplus.FilterEngine;
 import org.adblockplus.libadblockplus.JsValue;
+import org.adblockplus.libadblockplus.Timer;
 import org.adblockplus.libadblockplus.ServerResponse;
 import org.adblockplus.libadblockplus.android.Utils;
 
@@ -32,10 +35,27 @@ import java.util.List;
 
 public class AndroidWebRequestTest extends BaseJsTest
 {
+  MockTimer timer;
+
+  private ManagedSchedulerImpl webRequestScheduler;
   @Override
   protected WebRequest createWebRequest()
   {
-    return new AndroidWebRequest(true, true);
+    webRequestScheduler = new ManagedSchedulerImpl();
+    return new AndroidWebRequest(webRequestScheduler, true, true);
+  }
+
+  @Override
+  public Timer createTimer()
+  {
+    return timer = new MockTimer();
+  }
+
+  private void waitForVariable(String getVariable)
+  {
+    while (jsEngine.evaluate(getVariable).isUndefined() && webRequestScheduler.processNextTask())
+    {
+    }
   }
 
   @Test
@@ -46,17 +66,7 @@ public class AndroidWebRequestTest extends BaseJsTest
     jsEngine.evaluate(
       "_webRequest.GET('https://easylist-downloads.adblockplus.org/easylist.txt', {}, " +
       "function(result) {foo = result;} )");
-    do
-    {
-      try
-      {
-        Thread.sleep(200);
-      }
-      catch (InterruptedException e)
-      {
-        throw new RuntimeException(e);
-      }
-    } while (jsEngine.evaluate("this.foo").isUndefined());
+    waitForVariable("this.foo");
 
     String response = jsEngine.evaluate("foo.responseText").asString();
     assertNotNull(response);
@@ -97,13 +107,7 @@ public class AndroidWebRequestTest extends BaseJsTest
               "request.addEventListener('load',function() {result=request.responseText;}, false);\n" +
               "request.addEventListener('error',function() {result='error';}, false);\n" +
               "request.send(null);");
-      do {
-        try {
-          Thread.sleep(200);
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-      } while (jsEngine.evaluate("result").isUndefined());
+      waitForVariable("result");
 
       assertEquals(
           ServerResponse.NsStatus.OK.getStatusCode(),
@@ -131,8 +135,11 @@ public class AndroidWebRequestTest extends BaseJsTest
     FilterEngine filterEngine = null;
     try {
       filterEngine = Utils.createFilterEngine(jsEngine);
-
-      Thread.sleep(20 * 1000); // wait for the subscription to be downloaded
+      // libadblockplus is using timer with zero timeout in order to implement Utils.runAsync
+      // what is used by adblockpluscore to schedule subscription updates.
+      timer.processImmediateTimers();
+      // now process all pending web requests
+      while(webRequestScheduler.processNextTask());
 
       final String url = "www.mobile01.com/somepage.html";
 

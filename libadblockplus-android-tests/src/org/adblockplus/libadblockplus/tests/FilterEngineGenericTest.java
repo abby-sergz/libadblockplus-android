@@ -18,13 +18,40 @@
 package org.adblockplus.libadblockplus.tests;
 
 import org.adblockplus.libadblockplus.FilterEngine;
-import org.adblockplus.libadblockplus.LazyWebRequest;
+import org.adblockplus.libadblockplus.HeaderEntry;
 import org.adblockplus.libadblockplus.WebRequest;
 import org.adblockplus.libadblockplus.android.Utils;
+
+import java.util.LinkedList;
+import java.util.List;
 
 public abstract class FilterEngineGenericTest extends BaseJsTest
 {
   protected FilterEngine filterEngine;
+
+  protected final static class WebRequestTask
+  {
+    public final String url;
+    public final List<HeaderEntry> headers;
+    public final WebRequest.GetCallback getCallback;
+    public WebRequestTask(String url, List<HeaderEntry> headers, WebRequest.GetCallback getCallback)
+    {
+      this.url = url;
+      this.headers = headers;
+      this.getCallback = getCallback;
+    }
+  }
+
+  protected class ManagedWebRequest extends WebRequest
+  {
+    @Override
+    public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
+    {
+      webRequestTasks.add(new WebRequestTask(url, headers, getCallback));
+    }
+  }
+
+  List<WebRequestTask> webRequestTasks = new LinkedList<WebRequestTask>();
 
   @Override
   protected void setUp() throws Exception
@@ -45,6 +72,6 @@ public abstract class FilterEngineGenericTest extends BaseJsTest
   @Override
   protected WebRequest createWebRequest()
   {
-    return new LazyWebRequest();
+    return new ManagedWebRequest();
   }
 }

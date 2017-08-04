@@ -29,7 +29,6 @@ import java.util.List;
 
 public class MockWebRequestTest extends BaseJsTest
 {
-
   private class LocalMockWebRequest extends WebRequest
   {
     @Override
@@ -124,7 +123,7 @@ public class MockWebRequestTest extends BaseJsTest
   {
     jsEngine.evaluate(
       "_webRequest.GET('http://example.com/', {X: 'Y'}, function(result) {foo = result;} )");
-    assertTrue(jsEngine.evaluate("this.foo").isUndefined());
+    assertFalse(jsEngine.evaluate("this.foo").isUndefined());
 
     assertEquals(
       ServerResponse.NsStatus.OK.getStatusCode(),

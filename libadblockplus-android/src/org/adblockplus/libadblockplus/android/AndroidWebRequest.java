@@ -32,6 +32,7 @@ import org.adblockplus.libadblockplus.AdblockPlusException;
 import org.adblockplus.libadblockplus.FilterEngine;
 import org.adblockplus.libadblockplus.HeaderEntry;
 import org.adblockplus.libadblockplus.JsValue;
+import org.adblockplus.libadblockplus.Scheduler;
 import org.adblockplus.libadblockplus.ServerResponse;
 import org.adblockplus.libadblockplus.ServerResponse.NsStatus;
 import org.adblockplus.libadblockplus.WebRequest;
@@ -45,9 +46,30 @@ public class AndroidWebRequest extends WebRequest
 
   public final static String TAG = Utils.getTag(WebRequest.class);
 
+  private final Scheduler scheduler;
   private final HashSet<String> subscriptionURLs = new HashSet<String>();
   private final boolean elemhideEnabled;
   private final boolean compressedStream;
+
+  public static abstract class SchedulerTask implements Scheduler.Task
+  {
+    protected final String url;
+    protected final List<HeaderEntry> headers;
+    protected final GetCallback getCallback;
+
+    protected SchedulerTask(String url, List<HeaderEntry> headers, GetCallback getCallback)
+    {
+      this.url = url;
+      this.headers = headers;
+      this.getCallback = getCallback;
+    }
+
+    protected void callCallback(ServerResponse serverResponse)
+    {
+      this.getCallback.call(serverResponse);
+      this.getCallback.dispose();
+    }
+  }
 
   /**
    * Ctor
@@ -56,15 +78,16 @@ public class AndroidWebRequest extends WebRequest
    *                       but allows better ad blocking
    * @param compressedStream Request for gzip compressed stream from the server
    */
-  public AndroidWebRequest(boolean enableElemhide, boolean compressedStream)
+  public AndroidWebRequest(Scheduler scheduler, boolean enableElemhide, boolean compressedStream)
   {
+    this.scheduler = scheduler;
     this.elemhideEnabled = enableElemhide;
     this.compressedStream = compressedStream;
   }
 
-  public AndroidWebRequest()
+  public AndroidWebRequest(Scheduler scheduler)
   {
-    this(false, true);
+    this(scheduler, false, true);
   }
 
   private boolean isListedSubscriptionUrl(final URL url)
@@ -115,80 +138,99 @@ public class AndroidWebRequest extends WebRequest
   @Override
   public void httpGET(final String urlStr, final List<HeaderEntry> headers, GetCallback getCallback)
   {
-    try
+    this.scheduler.schedule(new GetTask(urlStr, headers, getCallback));
+  }
+
+  private final class GetTask implements Scheduler.Task
+  {
+    private final String url;
+    private final List<HeaderEntry> headers;
+    private final WebRequest.GetCallback getCallback;
+
+    public GetTask(String url, List<HeaderEntry> headers, WebRequest.GetCallback getCallback)
     {
-      final URL url = new URL(urlStr);
-      Log.d(TAG, "Downloading from: " + url);
-
-      final HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-      connection.setRequestMethod("GET");
-      connection.setRequestProperty("Accept-Encoding",
-        (compressedStream ? ENCODING_GZIP : ENCODING_IDENTITY));
-      connection.connect();
-
-      final ServerResponse response = new ServerResponse();
-      response.setResponseStatus(connection.getResponseCode());
-
-      if (response.getResponseStatus() == 200)
+      this.url = url;
+      this.headers = headers;
+      this.getCallback = getCallback;
+    }
+    @Override
+    public void run()
+    {
+      try
       {
-        final InputStream inputStream =
-          (compressedStream && ENCODING_GZIP.equals(connection.getContentEncoding())
-            ? new GZIPInputStream(connection.getInputStream())
-            : connection.getInputStream());
-        final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
-        final StringBuilder sb = new StringBuilder();
+        final URL url = new URL(this.url);
+        Log.d(TAG, "Downloading from: " + url);
 
-        String line;
-        while ((line = reader.readLine()) != null)
+        final HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+        connection.setRequestProperty("Accept-Encoding",
+            (compressedStream ? ENCODING_GZIP : ENCODING_IDENTITY));
+        connection.connect();
+
+        final ServerResponse response = new ServerResponse();
+        response.setResponseStatus(connection.getResponseCode());
+
+        if (response.getResponseStatus() == 200)
         {
-          // We're only appending non-element-hiding filters here.
-          //
-          // See:
-          //      https://issues.adblockplus.org/ticket/303
-          //
-          // Follow-up issue for removing this hack:
-          //      https://issues.adblockplus.org/ticket/1541
-          //
-          if (this.elemhideEnabled || !isListedSubscriptionUrl(url) || line.indexOf('#') == -1)
-          {
-            sb.append(line);
-            sb.append('\n');
-          }
-        }
+          final InputStream inputStream =
+              (compressedStream && ENCODING_GZIP.equals(connection.getContentEncoding())
+                  ? new GZIPInputStream(connection.getInputStream())
+                  : connection.getInputStream());
+          final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
+          final StringBuilder sb = new StringBuilder();
 
-        response.setStatus(NsStatus.OK);
-        response.setResponse(sb.toString());
-
-        if (connection.getHeaderFields().size() > 0)
-        {
-          List<HeaderEntry> responseHeaders = new LinkedList<HeaderEntry>();
-          for (Map.Entry<String, List<String>> eachEntry : connection.getHeaderFields().entrySet())
+          String line;
+          while ((line = reader.readLine()) != null)
           {
-            for (String eachValue : eachEntry.getValue())
+            // We're only appending non-element-hiding filters here.
+            //
+            // See:
+            //      https://issues.adblockplus.org/ticket/303
+            //
+            // Follow-up issue for removing this hack:
+            //      https://issues.adblockplus.org/ticket/1541
+            //
+            if (elemhideEnabled || !isListedSubscriptionUrl(url) || line.indexOf('#') == -1)
             {
-              if (eachEntry.getKey() != null && eachValue != null)
-              {
-                responseHeaders.add(new HeaderEntry(eachEntry.getKey().toLowerCase(), eachValue));
-              }
+              sb.append(line);
+              sb.append('\n');
             }
           }
-          response.setReponseHeaders(responseHeaders);
-        }
 
-        connection.disconnect();
+          response.setStatus(NsStatus.OK);
+          response.setResponse(sb.toString());
+
+          if (connection.getHeaderFields().size() > 0)
+          {
+            List<HeaderEntry> responseHeaders = new LinkedList<HeaderEntry>();
+            for (Map.Entry<String, List<String>> eachEntry : connection.getHeaderFields().entrySet())
+            {
+              for (String eachValue : eachEntry.getValue())
+              {
+                if (eachEntry.getKey() != null && eachValue != null)
+                {
+                  responseHeaders.add(new HeaderEntry(eachEntry.getKey().toLowerCase(), eachValue));
+                }
+              }
+            }
+            response.setReponseHeaders(responseHeaders);
+          }
+
+          connection.disconnect();
+        }
+        else
+        {
+          response.setStatus(NsStatus.ERROR_FAILURE);
+        }
+        Log.d(TAG, "Downloading finished");
+        getCallback.call(response);
+        getCallback.dispose();
       }
-      else
+      catch (final Throwable t)
       {
-        response.setStatus(NsStatus.ERROR_FAILURE);
+        Log.e(TAG, "WebRequest failed", t);
+        throw new AdblockPlusException("WebRequest failed", t);
       }
-      Log.d(TAG, "Downloading finished");
-      getCallback.call(response);
-      getCallback.dispose();
-    }
-    catch (final Throwable t)
-    {
-      Log.e(TAG, "WebRequest failed", t);
-      throw new AdblockPlusException("WebRequest failed", t);
     }
   }
 }

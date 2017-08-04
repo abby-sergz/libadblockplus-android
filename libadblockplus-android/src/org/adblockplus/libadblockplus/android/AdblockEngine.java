@@ -35,6 +35,7 @@ import org.adblockplus.libadblockplus.IsAllowedConnectionCallback;
 import org.adblockplus.libadblockplus.JsEngine;
 import org.adblockplus.libadblockplus.JsValue;
 import org.adblockplus.libadblockplus.LogSystem;
+import org.adblockplus.libadblockplus.Scheduler;
 import org.adblockplus.libadblockplus.ShowNotificationCallback;
 import org.adblockplus.libadblockplus.Subscription;
 import org.adblockplus.libadblockplus.UpdateAvailableCallback;
@@ -78,6 +79,7 @@ public final class AdblockEngine
   private volatile boolean elemhideEnabled;
   private volatile boolean enabled = true;
   private volatile List<String> whitelistedDomains;
+  private volatile Scheduler schedule;
 
   public static AppInfo generateAppInfo(final Context context, boolean developmentBuild,
                                         String application, String applicationVersion)
@@ -118,6 +120,15 @@ public final class AdblockEngine
     catch (PackageManager.NameNotFoundException e)
     {
       throw new RuntimeException(e);
+    }
+  }
+
+  private static final class SchedulerImpl implements Scheduler
+  {
+    @Override
+    public void schedule(Task task)
+    {
+      (new Thread(task)).start();
     }
   }
 
@@ -195,13 +206,13 @@ public final class AdblockEngine
 
     private void initRequests()
     {
-      androidWebRequest = new AndroidWebRequest(engine.elemhideEnabled, true);
+      androidWebRequest = new AndroidWebRequest(engine.schedule, engine.elemhideEnabled, true);
       engine.webRequest = androidWebRequest;
 
       if (urlToResourceIdMap != null)
       {
         AndroidWebRequestResourceWrapper wrapper = new AndroidWebRequestResourceWrapper(
-          context, engine.webRequest, urlToResourceIdMap, resourceStorage);
+          context, engine.schedule, engine.webRequest, urlToResourceIdMap, resourceStorage);
         wrapper.setListener(new AndroidWebRequestResourceWrapper.Listener()
         {
           @Override
@@ -239,6 +250,7 @@ public final class AdblockEngine
 
     public AdblockEngine build(final Runnable onCompleted)
     {
+      this.engine.schedule = new SchedulerImpl();
       initRequests();
 
       // webRequest should be ready to be used passed right after JsEngine is created

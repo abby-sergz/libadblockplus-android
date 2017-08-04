@@ -22,7 +22,8 @@ import android.os.SystemClock;
 import org.adblockplus.libadblockplus.FilterEngine;
 import org.adblockplus.libadblockplus.HeaderEntry;
 import org.adblockplus.libadblockplus.IsAllowedConnectionCallback;
-import org.adblockplus.libadblockplus.ServerResponse;
+import org.adblockplus.libadblockplus.MockTimer;
+import org.adblockplus.libadblockplus.Timer;
 import org.adblockplus.libadblockplus.Subscription;
 import org.adblockplus.libadblockplus.WebRequest;
 import org.adblockplus.libadblockplus.android.AndroidWebRequest;
@@ -34,9 +35,9 @@ import java.util.List;
 
 public class IsAllowedConnectionCallbackTest extends BaseJsTest
 {
-  private static final int UPDATE_SUBSCRIPTIONS_WAIT_DELAY_MS = 5 * 1000; // 5s
+  private MockTimer timer;
 
-  private static final class TestRequest extends AndroidWebRequest
+  private static final class TestRequest extends WebRequest
   {
     private List<String> urls = new LinkedList<String>();
 
@@ -49,7 +50,7 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
     public void httpGET(String url, List<HeaderEntry> headers, GetCallback getCallback)
     {
       urls.add(url);
-      super.httpGET(url, headers, getCallback);
+      getCallback.dispose();
     }
   }
 
@@ -115,6 +116,12 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
   }
 
   @Override
+  protected Timer createTimer()
+  {
+    return timer = new MockTimer();
+  }
+
+  @Override
   protected WebRequest createWebRequest()
   {
     return request;
@@ -133,6 +140,9 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
         s.dispose();
       }
     }
+    // libadblockplus is using timer with zero timeout in order to implement Utils.runAsync
+    // what is used by adblockpluscore to schedule subscription updates.
+    timer.processImmediateTimers();
   }
 
   @Test
@@ -146,7 +156,6 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
     assertFalse(callback.isInvoked());
 
     updateSubscriptions();
-    SystemClock.sleep(UPDATE_SUBSCRIPTIONS_WAIT_DELAY_MS);
 
     assertTrue(callback.isInvoked());
     assertNotNull(callback.getConnectionType());
@@ -165,7 +174,6 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
     assertEquals(0, request.getUrls().size());
 
     updateSubscriptions();
-    SystemClock.sleep(UPDATE_SUBSCRIPTIONS_WAIT_DELAY_MS);
 
     assertTrue(callback.isInvoked());
     assertNotNull(callback.getConnectionType());

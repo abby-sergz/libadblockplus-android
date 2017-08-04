@@ -123,7 +123,7 @@ void JniWebRequest::GET(const std::string& url,
   jmethodID method = env->GetMethodID(
       *JniLocalReference<jclass>(*env, env->GetObjectClass(GetCallbackObject())),
       "httpGET",
-      "(Ljava/lang/String;Ljava/util/List;" TYP("GetCallback") ")V");
+      "(Ljava/lang/String;Ljava/util/List;" TYP("WebRequest$GetCallback") ")V");
 
   if (jGetCallback && method)
   {
