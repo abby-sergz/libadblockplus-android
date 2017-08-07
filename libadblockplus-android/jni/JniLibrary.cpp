@@ -15,6 +15,7 @@
  * along with Adblock Plus.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "JniFilterEngine.h"
 #include "JniJsValue.h"
 #include "JniFilter.h"
 #include "JniLogSystem.h"
@@ -31,6 +32,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
     return JNI_ERR;
   }
 
+  JniFilterEngine_OnLoad(vm, env, reserved);
   JniJsValue_OnLoad(vm, env, reserved);
   JniFilter_OnLoad(vm, env, reserved);
   JniLogSystem_OnLoad(vm, env, reserved);
@@ -50,6 +52,7 @@ void JNI_OnUnload(JavaVM* vm, void* reserved)
     return;
   }
 
+  JniFilter_OnUnload(vm, env, reserved);
   JniJsValue_OnUnload(vm, env, reserved);
   JniFilter_OnUnload(vm, env, reserved);
   JniLogSystem_OnUnload(vm, env, reserved);

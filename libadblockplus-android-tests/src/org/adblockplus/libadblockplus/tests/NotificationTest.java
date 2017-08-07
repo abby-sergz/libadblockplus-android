@@ -23,6 +23,7 @@ import org.adblockplus.libadblockplus.Notification;
 import org.adblockplus.libadblockplus.ShowNotificationCallback;
 
 import org.adblockplus.libadblockplus.WebRequest;
+import org.adblockplus.libadblockplus.android.Utils;
 import org.junit.Test;
 import org.junit.experimental.ParallelComputer;
 
@@ -34,7 +35,18 @@ public class NotificationTest extends BaseJsTest
   protected void setUp() throws Exception
   {
     super.setUp();
-    filterEngine = new FilterEngine(jsEngine);
+    filterEngine = Utils.createFilterEngine(jsEngine);
+  }
+
+  @Override
+  public void tearDown() throws Exception
+  {
+    if (filterEngine != null)
+    {
+      filterEngine.dispose();
+      filterEngine = null;
+    }
+    super.tearDown();
   }
 
   @Override

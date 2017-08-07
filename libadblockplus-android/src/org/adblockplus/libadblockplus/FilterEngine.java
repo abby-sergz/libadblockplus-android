@@ -36,19 +36,31 @@ public final class FilterEngine implements Disposable
     OBJECT_SUBREQUEST, FONT, MEDIA
   }
 
-  public FilterEngine(final JsEngine jsEngine, final IsAllowedConnectionCallback isAllowedConnectionCallback)
+  public interface OnCreated
   {
-    long jisAllowedConnectionCallbackPtr =
-      (isAllowedConnectionCallback != null
-        ? isAllowedConnectionCallback.ptr
-        : 0l);
-    this.ptr = ctor(jsEngine.ptr, jisAllowedConnectionCallbackPtr);
-    this.disposer = new Disposer(this, new DisposeWrapper(this.ptr));
+    void call(FilterEngine filterEngine);
   }
 
-  public FilterEngine(final JsEngine jsEngine)
+  public static void createAsync(final JsEngine jsEngine,
+                     final IsAllowedConnectionCallback isAllowedConnectionCallback,
+                     final OnCreated onCreated)
   {
-    this(jsEngine, null);
+    long jisAllowedConnectionCallbackPtr =
+        (isAllowedConnectionCallback != null
+            ? isAllowedConnectionCallback.ptr
+            : 0l);
+    createAsync(jsEngine.ptr, jisAllowedConnectionCallbackPtr, onCreated);
+  }
+
+  public static void createAsync(final JsEngine jsEngine, OnCreated onCreated)
+  {
+    createAsync(jsEngine, null, onCreated);
+  }
+
+  private FilterEngine(long ptr)
+  {
+    this.ptr = ptr;
+    this.disposer = new Disposer(this, new DisposeWrapper(this.ptr));
   }
 
   public boolean isFirstRun()
@@ -230,7 +242,7 @@ public final class FilterEngine implements Disposable
 
   private final static native void registerNatives();
 
-  private final static native long ctor(long jsEnginePtr, long isAllowedConnectionCallbackPtr);
+  private final static native void createAsync(long jsEnginePtr, long isAllowedConnectionCallbackPtr, OnCreated onCreated);
 
   private final static native boolean isFirstRun(long ptr);
 

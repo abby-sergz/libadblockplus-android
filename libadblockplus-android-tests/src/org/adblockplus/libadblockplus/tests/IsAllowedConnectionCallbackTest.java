@@ -26,6 +26,7 @@ import org.adblockplus.libadblockplus.ServerResponse;
 import org.adblockplus.libadblockplus.Subscription;
 import org.adblockplus.libadblockplus.WebRequest;
 import org.adblockplus.libadblockplus.android.AndroidWebRequest;
+import org.adblockplus.libadblockplus.android.Utils;
 import org.junit.Test;
 
 import java.util.LinkedList;
@@ -99,7 +100,18 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
     super.setUp();
 
     callback = new TestCallback();
-    filterEngine = new FilterEngine(jsEngine, callback);
+    filterEngine = Utils.createFilterEngine(jsEngine, callback);
+  }
+
+  @Override
+  public void tearDown() throws Exception
+  {
+    if (filterEngine != null)
+    {
+      filterEngine.dispose();
+      filterEngine = null;
+    }
+    super.tearDown();
   }
 
   @Override

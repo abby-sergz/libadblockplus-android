@@ -48,6 +48,9 @@ static AdblockPlus::FilterEngine::ContentType ConvertContentType(JNIEnv *env,
 
 namespace
 {
+  JniGlobalReference<jclass>* filterEngineClass;
+  jmethodID filterEngineCtor;
+
   struct JniFilterEngine
   {
     AdblockPlus::ITimer* timer;
@@ -58,9 +61,50 @@ namespace
   {
     return *JniLongToTypePtr<JniFilterEngine>(ptr)->filterEngine;
   }
+
+  class OnFilterEngineCreated : public JniCallbackBase
+  {
+  public:
+    explicit OnFilterEngineCreated(JNIEnv* env, jobject callbackObject)
+    : JniCallbackBase(env, callbackObject)
+    {
+    }
+    void call(JniFilterEngine* filterEngine)
+    {
+      JNIEnvAcquire env(GetJavaVM());
+      auto jFilterEngine = env->NewObject(filterEngineClass->Get(),
+                                         filterEngineCtor,
+                                         JniPtrToLong(filterEngine));
+      jmethodID method = env->GetMethodID(*JniLocalReference<jclass>(*env, env->GetObjectClass(GetCallbackObject())),
+                                          "call",
+                                          "(" TYP("FilterEngine") ")V");
+      if (jFilterEngine && method)
+      {
+        env->CallVoidMethod(GetCallbackObject(), method, jFilterEngine);
+      }
+    }
+  };
 }
 
-static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jlong jniJsEnginePtr, jlong isAllowedConnectionCallbackPtr)
+void JniFilterEngine_OnLoad(JavaVM* vm, JNIEnv* env, void* reserved)
+{
+  filterEngineClass = new JniGlobalReference<jclass>(env, env->FindClass(PKG("FilterEngine")));
+  filterEngineCtor = env->GetMethodID(filterEngineClass->Get(), "<init>", "(J)V");
+}
+
+void JniFilterEngine_OnUnload(JavaVM* vm, JNIEnv* env, void* reserved)
+{
+  if (filterEngineClass)
+  {
+    delete filterEngineClass;
+    filterEngineClass = nullptr;
+  }
+}
+
+static void JNICALL createAsync(JNIEnv* env, jclass clazz,
+                                 jlong jniJsEnginePtr,
+                                 jlong isAllowedConnectionCallbackPtr,
+                                 jobject jOnCreated)
 {
   try
   {
@@ -69,36 +113,37 @@ static jlong JNICALL JniCtor(JNIEnv* env, jclass clazz, jlong jniJsEnginePtr, jl
     auto jniFilterEngine = new JniFilterEngine();
     jniFilterEngine->timer = jniJsEngine->timer;
 
+    AdblockPlus::FilterEngine::CreationParameters creationParameters;
     if (isAllowedConnectionCallbackPtr != 0)
     {
-      AdblockPlus::FilterEngine::CreationParameters creationParameters;
       JniIsAllowedConnectionTypeCallback* callback =
         JniLongToTypePtr<JniIsAllowedConnectionTypeCallback>(isAllowedConnectionCallbackPtr);
 
       creationParameters.isSubscriptionDownloadAllowedCallback =
-        [callback](const std::string* allowedConnectionTypeArg, const std::function<void(bool)>& doneCallback)
+        [callback, jniFilterEngine](const std::string* allowedConnectionTypeArg, const std::function<void(bool)>& doneCallback)
       {
         std::shared_ptr<std::string> allowedConnectionType;
         if (allowedConnectionTypeArg)
         {
           allowedConnectionType = std::make_shared<std::string>(*allowedConnectionTypeArg);
         }
-        std::thread([callback, allowedConnectionType, doneCallback]
+        jniFilterEngine->timer->SetTimer(std::chrono::milliseconds::zero(), [callback, allowedConnectionType, doneCallback]
         {
           doneCallback(callback->Callback(allowedConnectionType.get()));
-        }).detach();
+        });
       };
-
-      jniFilterEngine->filterEngine = AdblockPlus::FilterEngine::Create(jsEngine, creationParameters);
     }
-    else
+    auto onCreatedCallbackObject = std::make_shared<OnFilterEngineCreated>(env, jOnCreated);
+    auto onCreatedCallback = [onCreatedCallbackObject, jniFilterEngine](const AdblockPlus::FilterEnginePtr& filterEngine)
     {
-      jniFilterEngine->filterEngine = AdblockPlus::FilterEngine::Create(jsEngine);
-    }
-
-    return JniPtrToLong(jniFilterEngine);
+      jniFilterEngine->filterEngine = filterEngine;
+      onCreatedCallbackObject->call(jniFilterEngine);
+    };
+    AdblockPlus::FilterEngine::CreateAsync(jsEngine,
+                                           onCreatedCallback,
+                                           creationParameters);
   }
-  CATCH_THROW_AND_RETURN(env, 0)
+  CATCH_AND_THROW(env)
 }
 
 static void JNICALL JniDtor(JNIEnv* env, jclass clazz, jlong ptr)
@@ -553,7 +598,7 @@ static void JNICALL JniUpdateFiltersAsync(JNIEnv* env, jclass clazz, jlong ptr, 
 
 static JNINativeMethod methods[] =
 {
-  { (char*)"ctor", (char*)"(JJ)J", (void*)JniCtor },
+  { (char*)"createAsync", (char*)"(JJ" TYP("FilterEngine$OnCreated") ")V", (void*)createAsync },
   { (char*)"isFirstRun", (char*)"(J)Z", (void*)JniIsFirstRun },
   { (char*)"getFilter", (char*)"(JLjava/lang/String;)" TYP("Filter"), (void*)JniGetFilter },
   { (char*)"getListedFilters", (char*)"(J)Ljava/util/List;", (void*)JniGetListedFilters },

@@ -133,7 +133,7 @@ public class AdblockHelper
     return this;
   }
 
-  private void createAdblock()
+  private void createAdblock(final Runnable onCompleted)
   {
     ConnectivityManager connectivityManager =
       (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -166,11 +166,27 @@ public class AdblockHelper
         new AndroidWebRequestResourceWrapper.SharedPrefsStorage(preloadedSubscriptionsPrefs));
     }
 
-    engine = builder.build();
+    final AdblockSettings settings = storage.load();
 
-    Log.d(TAG, "AdblockHelper engine created");
+    engine = builder.build(new Runnable() {
+      @Override
+      public void run() {
+        Log.d(TAG, "AdblockEngine building finished, run the continuation");
+        if (settings != null)
+        {
+          // allowed connection type is saved by filter engine but we need to override it
+          // as filter engine can be not created when changing
+          String connectionType = (settings.getAllowedConnectionType() != null
+              ? settings.getAllowedConnectionType().getValue()
+              : null);
+          engine.getFilterEngine().setAllowedConnectionType(connectionType);
+        }
+        onCompleted.run();
+      }
+    });
 
-    AdblockSettings settings = storage.load();
+    Log.d(TAG, "AdblockEngine created");
+
     if (settings != null)
     {
       Log.d(TAG, "Applying saved adblock settings to adblock engine");
@@ -180,13 +196,6 @@ public class AdblockHelper
       // are saved by adblock engine itself
       engine.setEnabled(settings.isAdblockEnabled());
       engine.setWhitelistedDomains(settings.getWhitelistedDomains());
-
-      // allowed connection type is saved by filter engine but we need to override it
-      // as filter engine can be not created when changing
-      String connectionType = (settings.getAllowedConnectionType() != null
-       ? settings.getAllowedConnectionType().getValue()
-       : null);
-      engine.getFilterEngine().setAllowedConnectionType(connectionType);
     }
     else
     {
@@ -250,26 +259,17 @@ public class AdblockHelper
   {
     if (referenceCounter.getAndIncrement() == 0)
     {
+      engineCreated = new CountDownLatch(1);
+      createAdblock(new Runnable() {
+        @Override
+        public void run() {
+          engineCreated.countDown();
+        }
+      });
+
       if (!asynchronous)
       {
-        createAdblock();
-      }
-      else
-      {
-        // latch is required for async (see `waitForReady()`)
-        engineCreated = new CountDownLatch(1);
-
-        new Thread(new Runnable()
-        {
-          @Override
-          public void run()
-          {
-            createAdblock();
-
-            // unlock waiting client thread
-            engineCreated.countDown();
-          }
-        }).start();
+        waitForReady();
       }
     }
   }
@@ -287,8 +287,6 @@ public class AdblockHelper
         waitForReady();
         disposeAdblock();
 
-        // to unlock waiting client in waitForReady()
-        engineCreated.countDown();
         engineCreated = null;
       }
       else

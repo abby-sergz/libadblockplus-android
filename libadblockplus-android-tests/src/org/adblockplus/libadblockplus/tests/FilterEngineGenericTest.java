@@ -20,6 +20,7 @@ package org.adblockplus.libadblockplus.tests;
 import org.adblockplus.libadblockplus.FilterEngine;
 import org.adblockplus.libadblockplus.LazyWebRequest;
 import org.adblockplus.libadblockplus.WebRequest;
+import org.adblockplus.libadblockplus.android.Utils;
 
 public abstract class FilterEngineGenericTest extends BaseJsTest
 {
@@ -29,7 +30,16 @@ public abstract class FilterEngineGenericTest extends BaseJsTest
   protected void setUp() throws Exception
   {
     super.setUp();
-    filterEngine = new FilterEngine(jsEngine);
+    filterEngine = Utils.createFilterEngine(jsEngine);
+  }
+
+  @Override
+  protected void tearDown()
+  {
+    if (filterEngine != null)
+    {
+      filterEngine.dispose();
+    }
   }
 
   @Override

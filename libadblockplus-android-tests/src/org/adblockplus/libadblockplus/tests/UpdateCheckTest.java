@@ -28,6 +28,7 @@ import org.adblockplus.libadblockplus.LazyWebRequest;
 import org.adblockplus.libadblockplus.ServerResponse;
 import org.adblockplus.libadblockplus.UpdateCheckDoneCallback;
 
+import org.adblockplus.libadblockplus.android.Utils;
 import org.junit.Test;
 
 import java.util.List;
@@ -83,12 +84,12 @@ public class UpdateCheckTest extends BaseJsTest
     }
   };
 
-  public void reset()
+  public void reset() throws InterruptedException
   {
     jsEngine = new JsEngine(appInfo, getContext().getFilesDir().getAbsolutePath(), webRequest, new LazyLogSystem());
     jsEngine.setEventCallback("updateAvailable", eventCallback);
 
-    filterEngine = new FilterEngine(jsEngine);
+    filterEngine = Utils.createFilterEngine(jsEngine);
   }
 
   @Override
@@ -101,6 +102,17 @@ public class UpdateCheckTest extends BaseJsTest
     eventCallbackCalled = false;
     updateCallbackCalled = false;
     reset();
+  }
+
+  @Override
+  public void tearDown() throws Exception
+  {
+    if (filterEngine != null)
+    {
+      filterEngine.dispose();
+      filterEngine = null;
+    }
+    super.tearDown();
   }
 
   public void forceUpdateCheck()

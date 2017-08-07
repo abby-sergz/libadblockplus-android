@@ -237,25 +237,44 @@ public final class AdblockEngine
       }
     }
 
-    public AdblockEngine build()
+    public AdblockEngine build(final Runnable onCompleted)
     {
       initRequests();
 
       // webRequest should be ready to be used passed right after JsEngine is created
-      createEngines();
-
-      initCallbacks();
-
-      androidWebRequest.updateSubscriptionURLs(engine.filterEngine);
+      createEngines(new Runnable() {
+        @Override
+        public void run() {
+          initCallbacks();
+          androidWebRequest.updateSubscriptionURLs(engine.filterEngine);
+          if (onCompleted != null)
+          {
+            onCompleted.run();
+          }
+        }
+      });
 
       return engine;
     }
 
-    private void createEngines()
+    public AdblockEngine build()
+    {
+      return build(null);
+    }
+
+    private void createEngines(final Runnable onCompleted)
     {
       engine.logSystem = new AndroidLogSystem();
       engine.jsEngine = new JsEngine(appInfo, basePath, engine.webRequest, engine.logSystem);
-      engine.filterEngine = new FilterEngine(engine.jsEngine, isAllowedConnectionCallback);
+      FilterEngine.createAsync(engine.jsEngine, isAllowedConnectionCallback,
+        new FilterEngine.OnCreated(){
+          @Override
+          public void call(FilterEngine filterEngine)
+          {
+            engine.filterEngine = filterEngine;
+            onCompleted.run();
+          }
+        });
     }
   }
 

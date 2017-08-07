@@ -22,7 +22,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
+import org.adblockplus.libadblockplus.FilterEngine;
+import org.adblockplus.libadblockplus.IsAllowedConnectionCallback;
+import org.adblockplus.libadblockplus.JsEngine;
 import org.json.JSONArray;
 
 import android.content.Context;
@@ -107,5 +111,34 @@ public final class Utils
 
     int pos = urlWithParams.indexOf("?");
     return (pos >= 0 ? urlWithParams.substring(0, pos) : urlWithParams);
+  }
+
+  public static FilterEngine createFilterEngine(final JsEngine jsEngine,
+                                                IsAllowedConnectionCallback isAllowedConnectionCallback) throws InterruptedException
+  {
+    class FilterEngineCreator
+    {
+      private FilterEngine filterEngine;
+      public FilterEngine createAndWait(final JsEngine jsEngine,
+                                        IsAllowedConnectionCallback isAllowedConnectionCallback) throws InterruptedException
+      {
+        final CountDownLatch latch = new CountDownLatch(1);
+        FilterEngine.createAsync(jsEngine, isAllowedConnectionCallback, new FilterEngine.OnCreated() {
+          @Override
+          public void call(FilterEngine filterEngineArg) {
+            filterEngine = filterEngineArg;
+            latch.countDown();
+          }
+        });
+        latch.await();
+        return filterEngine;
+      }
+    };
+    return (new FilterEngineCreator()).createAndWait(jsEngine, isAllowedConnectionCallback);
+  }
+
+  public static FilterEngine createFilterEngine(final JsEngine jsEngine) throws InterruptedException
+  {
+    return Utils.createFilterEngine(jsEngine, null);
   }
 }
