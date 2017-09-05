@@ -10,7 +10,11 @@ android {
     versionCode 2
     versionName "1.0.1"
   }
-
+  packagingOptions {
+    doNotStrip "*/armeabi/*.so"
+    doNotStrip "*/armeabi-v7a/*.so"
+    doNotStrip "*/x86/*.so"
+  }
   sourceSets {
     main {
       manifest.srcFile 'AndroidManifest.xml'
