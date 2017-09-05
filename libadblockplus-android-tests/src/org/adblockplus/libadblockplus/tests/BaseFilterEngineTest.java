@@ -21,7 +21,7 @@ import org.adblockplus.libadblockplus.FilterEngine;
 import org.adblockplus.libadblockplus.LazyWebRequest;
 import org.adblockplus.libadblockplus.WebRequest;
 
-public abstract class BaseFilterEngineTest extends BaseJsEngineTest
+public abstract class BaseFilterEngineTest extends BasePlatformTest
 {
   protected FilterEngine filterEngine;
 
@@ -29,7 +29,7 @@ public abstract class BaseFilterEngineTest extends BaseJsEngineTest
   protected void setUp() throws Exception
   {
     super.setUp();
-    filterEngine = new FilterEngine(jsEngine);
+    filterEngine = platform.getFilterEngine();
   }
 
   @Override
@@ -44,7 +44,6 @@ public abstract class BaseFilterEngineTest extends BaseJsEngineTest
     if (filterEngine != null)
     {
       Thread.sleep(200); // let FS finish its operations
-      filterEngine.dispose();
       filterEngine = null;
     }
   }
