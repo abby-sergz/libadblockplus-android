@@ -28,10 +28,12 @@ public class Platform implements Disposable
     registerNatives();
   }
 
-  // If an interface parameter value is null then a default implementation is
-  // chosen.
-  // If basePath is null then paths are not resolved to a full path, thus
-  // current working directory is used.
+  /**
+   * If an interface parameter value is null then a default implementation is
+   * chosen.
+   * If basePath is null then paths are not resolved to a full path, thus
+   * current working directory is used.
+   */
   public Platform(final LogSystem logSystem, final WebRequest webRequest, final String basePath)
   {
     this(ctor(logSystem, webRequest, basePath));
