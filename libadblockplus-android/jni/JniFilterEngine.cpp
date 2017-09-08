@@ -48,9 +48,9 @@ static AdblockPlus::FilterEngine::ContentType ConvertContentType(JNIEnv *env,
 
 namespace
 {
-  AdblockPlus::FilterEngine& GetFilterEngineRef(jlong ptr)
+  AdblockPlus::FilterEngine& GetFilterEngineRef(jlong jniPlatformPtr)
   {
-    return JniLongToTypePtr<JniPlatform>(ptr)->platform->GetFilterEngine();
+    return JniLongToTypePtr<JniPlatform>(jniPlatformPtr)->platform->GetFilterEngine();
   }
 }
 
@@ -481,10 +481,10 @@ static jstring JNICALL JniGetAcceptableAdsSubscriptionURL(JNIEnv* env, jclass cl
   CATCH_THROW_AND_RETURN(env, 0)
 }
 
-static void JNICALL JniUpdateFiltersAsync(JNIEnv* env, jclass clazz, jlong ptr, jstring jSubscriptionUrl)
+static void JNICALL JniUpdateFiltersAsync(JNIEnv* env, jclass clazz, jlong jniPlatformPtr, jstring jSubscriptionUrl)
 {
   std::string subscriptionUrl = JniJavaToStdString(env, jSubscriptionUrl);
-  auto jniPlatform = JniLongToTypePtr<JniPlatform>(ptr);
+  auto jniPlatform = JniLongToTypePtr<JniPlatform>(jniPlatformPtr);
   jniPlatform->scheduler([jniPlatform, subscriptionUrl]
   {
     auto& filterEngine = jniPlatform->platform->GetFilterEngine();

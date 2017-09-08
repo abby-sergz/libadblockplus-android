@@ -31,13 +31,14 @@ public final class FilterEngine
 
   public static enum ContentType
   {
-    OTHER, SCRIPT, IMAGE, STYLESHEET, OBJECT, SUBDOCUMENT, DOCUMENT, XMLHTTPREQUEST,
-    OBJECT_SUBREQUEST, FONT, MEDIA
+    OTHER, SCRIPT, IMAGE, STYLESHEET, OBJECT, SUBDOCUMENT, DOCUMENT, WEBSOCKET,
+    WEBRTC, PING, XMLHTTPREQUEST, OBJECT_SUBREQUEST, MEDIA, FONT, GENERICBLOCK,
+    ELEMHIDE, GENERICHIDE
   }
 
-  FilterEngine(/* JniPlatform */long ptr)
+  FilterEngine(long jniPlatformPtr)
   {
-    this.ptr = ptr;
+    this.ptr = jniPlatformPtr;
   }
 
   public boolean isFirstRun()

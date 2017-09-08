@@ -28,19 +28,13 @@ public class Platform implements Disposable
     registerNatives();
   }
 
+  // If an interface parameter value is null then a default implementation is
+  // chosen.
+  // If basePath is null then paths are not resolved to a full path, thus
+  // current working directory is used.
   public Platform(final LogSystem logSystem, final WebRequest webRequest, final String basePath)
   {
     this(ctor(logSystem, webRequest, basePath));
-  }
-
-  public Platform(final WebRequest webRequest, final String basePath)
-  {
-    this(null, webRequest, basePath);
-  }
-
-  public Platform()
-  {
-    this(null, null, null);
   }
 
   protected Platform(final long ptr)
@@ -66,6 +60,10 @@ public class Platform implements Disposable
 
   public FilterEngine getFilterEngine()
   {
+    // Initially FilterEngine is not constructed when Platform is instantiated
+    // and in addition FilterEngine is being created asynchronously, the call
+    // of `ensureFilterEngine` causes a construction of FilterEngine if it's
+    // not created yet and waits for it.
     ensureFilterEngine(this.ptr);
     return new FilterEngine(this.ptr);
   }
