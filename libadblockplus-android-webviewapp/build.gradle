@@ -13,17 +13,24 @@ repositories {
 }
 
 android {
+    signingConfigs {
+        release {
+            keyAlias 'dev-release-key'
+            keyPassword 'android'
+            storeFile file('/Users/sergz/.android/dev-release.keystore')
+            storePassword 'android'
+        }
+    }
     compileSdkVersion 21
     buildToolsVersion "25.0.0"
-
     defaultConfig {
         applicationId "org.adblockplus.libadblockplus.android.webviewapp"
         minSdkVersion 21
         targetSdkVersion 21
         versionCode 3
         versionName "1.0.2"
+        signingConfig signingConfigs.release
     }
-
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
@@ -36,6 +43,13 @@ android {
                     project ":libadblockplus-android"
                 }
             }
+        }
+    }
+    productFlavors {
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
         }
     }
 }
