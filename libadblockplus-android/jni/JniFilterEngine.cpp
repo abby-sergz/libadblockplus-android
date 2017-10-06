@@ -485,7 +485,7 @@ static void JNICALL JniUpdateFiltersAsync(JNIEnv* env, jclass clazz, jlong jniPl
 {
   std::string subscriptionUrl = JniJavaToStdString(env, jSubscriptionUrl);
   auto jniPlatform = JniLongToTypePtr<JniPlatform>(jniPlatformPtr);
-  jniPlatform->scheduler([jniPlatform, subscriptionUrl]
+  auto updateSubscriptionFilters = [jniPlatform, subscriptionUrl]
   {
     auto& filterEngine = jniPlatform->platform->GetFilterEngine();
     for (auto& subscription : filterEngine.GetListedSubscriptions())
@@ -496,6 +496,10 @@ static void JNICALL JniUpdateFiltersAsync(JNIEnv* env, jclass clazz, jlong jniPl
         return;
       }
     }
+  };
+  jniPlatform->platform->WithTimer([updateSubscriptionFilters](AdblockPlus::ITimer& timer)
+  {
+    timer.SetTimer(std::chrono::milliseconds(300), updateSubscriptionFilters);
   });
 }
 
