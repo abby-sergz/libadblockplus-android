@@ -17,6 +17,7 @@
 
 package org.adblockplus.libadblockplus;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -59,11 +60,13 @@ public final class ServerResponse
   }
 
   private long status = NsStatus.OK.getStatusCode();
+  // finalUrl is meant to hold the final url after http redirection
+  private String finalUrl;
   private int responseStatus = 400;
   private String[] headers = null;
   // TODO: This (and the whole downloading) is a waste of memory, change String
   // to something more suitable
-  private String response = null;
+  private ByteBuffer response = null;
 
   public NsStatus getStatus()
   {
@@ -85,19 +88,19 @@ public final class ServerResponse
     this.responseStatus = status;
   }
 
-  public String getResponse()
+  public ByteBuffer getResponse()
   {
     return this.response;
   }
 
-  public void setResponse(final String response)
+  public void setResponse(final ByteBuffer response)
   {
     this.response = response;
   }
 
   public List<HeaderEntry> getResponseHeaders()
   {
-    final ArrayList<HeaderEntry> ret = new ArrayList<HeaderEntry>();
+    final List<HeaderEntry> ret = new ArrayList<HeaderEntry>();
 
     if (this.headers != null)
     {
@@ -110,7 +113,7 @@ public final class ServerResponse
     return ret;
   }
 
-  public void setReponseHeaders(final List<HeaderEntry> headers)
+  public void setResponseHeaders(final List<HeaderEntry> headers)
   {
     if (headers.isEmpty())
     {
@@ -128,5 +131,15 @@ public final class ServerResponse
         i += 2;
       }
     }
+  }
+
+  public String getFinalUrl()
+  {
+    return finalUrl;
+  }
+
+  public void setFinalUrl(final String url)
+  {
+    finalUrl = url;
   }
 }

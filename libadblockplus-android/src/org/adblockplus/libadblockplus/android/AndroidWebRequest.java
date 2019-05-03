@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -174,7 +175,7 @@ public class AndroidWebRequest extends WebRequest
           }
 
           response.setStatus(NsStatus.OK);
-          response.setResponse(sb.toString());
+          response.setResponse(Utils.stringToByteBuffer(sb.toString(), Charset.forName("UTF-8")));
 
           if (connection.getHeaderFields().size() > 0)
           {
@@ -189,7 +190,7 @@ public class AndroidWebRequest extends WebRequest
                 }
               }
             }
-            response.setReponseHeaders(responseHeaders);
+            response.setResponseHeaders(responseHeaders);
           }
         }
         else

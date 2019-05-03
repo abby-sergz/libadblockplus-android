@@ -28,6 +28,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -140,7 +141,7 @@ public class AndroidWebRequestResourceWrapper extends WebRequest
     return request.httpGET(url, headers);
   }
 
-  protected String readResourceContent(int resourceId) throws IOException
+  protected ByteBuffer readResourceContent(int resourceId) throws IOException
   {
     Log.d(TAG, "Reading from resource ...");
 
@@ -149,25 +150,7 @@ public class AndroidWebRequestResourceWrapper extends WebRequest
     try
     {
       is = context.getResources().openRawResource(resourceId);
-      BufferedReader br = new BufferedReader(new InputStreamReader(is));
-      StringBuilder sb = new StringBuilder();
-      String line;
-      boolean firstLine = true;
-      while ((line = br.readLine()) != null)
-      {
-        if (firstLine)
-        {
-          firstLine = false;
-        }
-        else
-        {
-          sb.append("\r\n");
-        }
-        sb.append(line);
-      }
-
-      Log.d(TAG, "Resource read (" + sb.length() + " bytes)");
-      return sb.toString();
+      return Utils.readFromInputStream(is);
     }
     finally
     {
