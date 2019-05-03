@@ -113,6 +113,28 @@ jobject NewJniArrayList(JNIEnv* env)
   return env->NewObject(arrayListClass->Get(), arrayListCtor);
 }
 
+jint JniGetListSize(JNIEnv* env, jobject list, jmethodID getSizeMethod)
+{
+  return env->CallIntMethod(list, getSizeMethod);
+}
+
+jmethodID JniGetGetFromListMethod(JNIEnv* env, jobject list)
+{
+  JniLocalReference<jclass> clazz(env, env->GetObjectClass(list));
+  return env->GetMethodID(*clazz, "get", "(I)Ljava/lang/Object;");
+}
+
+jobject JniGetObjectFromList(JNIEnv* env, jobject list, jmethodID getMethod, jint i)
+{
+  return env->CallObjectMethod(list, getMethod, i);
+}
+
+jmethodID JniGetListSizeMethod(JNIEnv* env, jobject list)
+{
+  JniLocalReference<jclass> clazz(env, env->GetObjectClass(list));
+  return env->GetMethodID(*clazz, "size", "()I");
+}
+
 jmethodID JniGetAddToListMethod(JNIEnv* env, jobject list)
 {
   JniLocalReference<jclass> clazz(env, env->GetObjectClass(list));

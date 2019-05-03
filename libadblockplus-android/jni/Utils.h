@@ -161,6 +161,11 @@ void JniAddObjectToList(JNIEnv* env, jobject list, jmethodID addMethod, jobject 
 
 void JniAddObjectToList(JNIEnv* env, jobject list, jobject value);
 
+jmethodID JniGetGetFromListMethod(JNIEnv* env, jobject list);
+jobject JniGetObjectFromList(JNIEnv* env, jobject list, jmethodID getMethod, jint i);
+jmethodID JniGetListSizeMethod(JNIEnv* env, jobject list);
+jint JniGetListSize(JNIEnv* env, jobject list, jmethodID getSizeMethod);
+
 inline std::string JniGetStringField(JNIEnv* env, jclass clazz, jobject jObj, const char* name)
 {
   return JniJavaToStdString(env, reinterpret_cast<jstring>(env->GetObjectField(jObj, env->GetFieldID(clazz, name, "Ljava/lang/String;"))));
