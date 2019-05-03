@@ -59,7 +59,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Pattern;
+
 
 /**
  * WebView with ad blocking
@@ -81,11 +81,7 @@ public class AdblockWebView extends WebView
   private static final String[] EMPTY_ARRAY = {};
   private static final String EMPTY_ELEMHIDE_ARRAY_STRING = "[]";
 
-  private static final Pattern RE_JS = Pattern.compile("\\.js$", Pattern.CASE_INSENSITIVE);
-  private static final Pattern RE_CSS = Pattern.compile("\\.css$", Pattern.CASE_INSENSITIVE);
-  private static final Pattern RE_IMAGE = Pattern.compile("\\.(?:gif|png|jpe?g|bmp|ico)$", Pattern.CASE_INSENSITIVE);
-  private static final Pattern RE_FONT = Pattern.compile("\\.(?:ttf|woff)$", Pattern.CASE_INSENSITIVE);
-  private static final Pattern RE_HTML = Pattern.compile("\\.html?$", Pattern.CASE_INSENSITIVE);
+  private RegexContentTypeDetector contentTypeDetector = new RegexContentTypeDetector();
   private boolean adblockEnabled = true;
   private boolean debugMode;
   private AdblockEngineProvider provider;
@@ -821,27 +817,8 @@ public class AdblockWebView extends WebView
         }
         else
         {
-          if (RE_JS.matcher(url).find())
-          {
-            contentType = FilterEngine.ContentType.SCRIPT;
-          }
-          else if (RE_CSS.matcher(url).find())
-          {
-            contentType = FilterEngine.ContentType.STYLESHEET;
-          }
-          else if (RE_IMAGE.matcher(url).find())
-          {
-            contentType = FilterEngine.ContentType.IMAGE;
-          }
-          else if (RE_FONT.matcher(url).find())
-          {
-            contentType = FilterEngine.ContentType.FONT;
-          }
-          else if (RE_HTML.matcher(url).find())
-          {
-            contentType = FilterEngine.ContentType.SUBDOCUMENT;
-          }
-          else
+          contentType = contentTypeDetector.detect(url);
+          if (contentType == null)
           {
             contentType = FilterEngine.ContentType.OTHER;
           }
