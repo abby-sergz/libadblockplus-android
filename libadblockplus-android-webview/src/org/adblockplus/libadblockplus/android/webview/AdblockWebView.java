@@ -82,6 +82,7 @@ public class AdblockWebView extends WebView
   protected static final String HEADER_REQUESTED_WITH = "X-Requested-With";
   protected static final String HEADER_REQUESTED_WITH_XMLHTTPREQUEST = "XMLHttpRequest";
 
+  private static final String ASSETS_CHARSET_NAME = "UTF-8";
   private static final String BRIDGE_TOKEN = "{{BRIDGE}}";
   private static final String DEBUG_TOKEN = "{{DEBUG}}";
   private static final String HIDE_TOKEN = "{{HIDE}}";
@@ -222,7 +223,7 @@ public class AdblockWebView extends WebView
   private String readScriptFile(String filename) throws IOException
   {
     return Utils
-      .readAssetAsString(getContext(), filename)
+      .readAssetAsString(getContext(), filename, ASSETS_CHARSET_NAME)
       .replace(BRIDGE_TOKEN, BRIDGE)
       .replace(DEBUG_TOKEN, (debugMode ? "" : "//"));
   }
