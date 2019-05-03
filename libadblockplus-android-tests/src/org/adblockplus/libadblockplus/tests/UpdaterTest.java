@@ -20,13 +20,13 @@ package org.adblockplus.libadblockplus.tests;
 import org.adblockplus.libadblockplus.AppInfo;
 import org.adblockplus.libadblockplus.FilterEngine;
 import org.adblockplus.libadblockplus.JsEngine;
-import org.adblockplus.libadblockplus.MockWebRequest;
+import org.adblockplus.libadblockplus.MockHttpClient;
 
 import android.test.AndroidTestCase;
 
 public class UpdaterTest extends AndroidTestCase
 {
-  protected MockWebRequest mockWebRequest;
+  protected MockHttpClient mockHttpClient;
   protected FilterEngine filterEngine;
 
   @Override
@@ -41,8 +41,8 @@ public class UpdaterTest extends AndroidTestCase
       .build();
 
     JsEngine jsEngine = new JsEngine(appInfo);
-    mockWebRequest = new MockWebRequest();
-    jsEngine.setWebRequest(mockWebRequest);
+    mockHttpClient = new MockHttpClient();
+    jsEngine.setHttpClient(mockHttpClient);
     jsEngine.setDefaultFileSystem(getContext().getFilesDir().getAbsolutePath());
 
     filterEngine = new FilterEngine(jsEngine);

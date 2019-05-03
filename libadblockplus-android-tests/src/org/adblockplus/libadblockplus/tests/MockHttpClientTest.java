@@ -19,21 +19,23 @@ package org.adblockplus.libadblockplus.tests;
 
 import org.adblockplus.libadblockplus.AdblockPlusException;
 import org.adblockplus.libadblockplus.HeaderEntry;
+import org.adblockplus.libadblockplus.HttpClient;
+import org.adblockplus.libadblockplus.HttpRequest;
 import org.adblockplus.libadblockplus.ServerResponse;
-import org.adblockplus.libadblockplus.WebRequest;
 
+import org.adblockplus.libadblockplus.android.Utils;
 import org.junit.Test;
 
+import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.util.List;
 
-public class MockWebRequestTest extends BaseJsTest
+public class MockHttpClientTest extends BaseJsTest
 {
 
-  private class LocalMockWebRequest extends WebRequest
+  private class LocalMockWebRequest extends HttpClient
   {
     @Override
-    public ServerResponse httpGET(String url, List<HeaderEntry> headers)
+    public ServerResponse request(HttpRequest request)
     {
       try
       {
@@ -47,12 +49,13 @@ public class MockWebRequestTest extends BaseJsTest
       ServerResponse result = new ServerResponse();
       result.setStatus(ServerResponse.NsStatus.OK);
       result.setResponseStatus(123);
-      result.setReponseHeaders(Arrays.asList(new HeaderEntry("Foo", "Bar")));
+      result.setResponseHeaders(Arrays.asList(new HeaderEntry("Foo", "Bar")));
 
-      result.setResponse(
-        url + "\n" + 
-        headers.get(0).getKey() + "\n" +
-        headers.get(0).getValue());
+      result.setResponse(Utils.stringToByteBuffer(
+        request.getUrl() + "\n" +
+        request.getHeaders().get(0).getKey() + "\n" +
+        request.getHeaders().get(0).getValue(),
+        Charset.forName("UTF-8")));
       return result;
     }
   }
@@ -62,7 +65,7 @@ public class MockWebRequestTest extends BaseJsTest
   {
     super.setUp();
 
-    jsEngine.setWebRequest(new LocalMockWebRequest());
+    jsEngine.setHttpClient(new LocalMockWebRequest());
   }
 
   @Test

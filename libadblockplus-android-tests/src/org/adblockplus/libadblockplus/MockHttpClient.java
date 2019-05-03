@@ -17,13 +17,12 @@
 
 package org.adblockplus.libadblockplus;
 
-import java.util.List;
-
-public class ThrowingWebRequest extends WebRequest
+public class MockHttpClient extends HttpClient
 {
-  @Override
-  public ServerResponse httpGET(String url, List<HeaderEntry> headers)
+  public ServerResponse response = new ServerResponse();
+
+  public ServerResponse request(HttpRequest request)
   {
-    throw new RuntimeException("Unexpected GET: " + url);
+    return response;
   }
 }

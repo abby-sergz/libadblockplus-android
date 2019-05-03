@@ -19,11 +19,13 @@ package org.adblockplus.libadblockplus.tests;
 
 import android.os.SystemClock;
 
+import org.adblockplus.libadblockplus.FilterEngine;
 import org.adblockplus.libadblockplus.HeaderEntry;
+import org.adblockplus.libadblockplus.HttpRequest;
 import org.adblockplus.libadblockplus.IsAllowedConnectionCallback;
 import org.adblockplus.libadblockplus.ServerResponse;
 import org.adblockplus.libadblockplus.Subscription;
-import org.adblockplus.libadblockplus.android.AndroidWebRequest;
+import org.adblockplus.libadblockplus.android.AndroidHttpClient;
 import org.junit.Test;
 
 import java.util.LinkedList;
@@ -33,7 +35,7 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
 {
   private static final int UPDATE_SUBSCRIPTIONS_WAIT_DELAY_MS = 5 * 1000; // 5s
 
-  private static final class TestRequest extends AndroidWebRequest
+  private static final class TestRequest extends AndroidHttpClient
   {
     private List<String> urls = new LinkedList<String>();
 
@@ -43,10 +45,10 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
     }
 
     @Override
-    public ServerResponse httpGET(String url, List<HeaderEntry> headers)
+    public ServerResponse request(HttpRequest request)
     {
-      urls.add(url);
-      return super.httpGET(url, headers);
+      urls.add(request.getUrl());
+      return super.request(request);
     }
   }
 
@@ -96,7 +98,7 @@ public class IsAllowedConnectionCallbackTest extends BaseJsTest
     super.setUp();
 
     request = new TestRequest();
-    jsEngine.setWebRequest(request);
+    jsEngine.setHttpClient(request);
     callback = new TestCallback();
 
     filterEngine = new FilterEngine(jsEngine, callback);

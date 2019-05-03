@@ -17,26 +17,60 @@
 
 package org.adblockplus.libadblockplus;
 
-import java.util.List;
-
-public abstract class WebRequest implements Disposable
+public abstract class HttpClient implements Disposable
 {
-  private final Disposer disposer;
-  protected final long ptr;
-
   static
   {
     System.loadLibrary("adblockplus-jni");
     registerNatives();
   }
 
-  public WebRequest()
+  /**
+   * Possible values for request method argument (see `request(..)` method)
+   */
+  public static String REQUEST_METHOD_GET = "GET";
+  public static String REQUEST_METHOD_POST = "POST";
+  public static String REQUEST_METHOD_HEAD = "HEAD";
+  public static String REQUEST_METHOD_OPTIONS = "OPTIONS";
+  public static String REQUEST_METHOD_PUT = "PUT";
+  public static String REQUEST_METHOD_DELETE = "DELETE";
+  public static String REQUEST_METHOD_TRACE = "TRACE";
+
+  /**
+   * Checks if HTTP status code is a redirection.
+   * @param httpStatusCode HTTP status code to check.
+   * @return True for redirect status code.
+   */
+  public static boolean isRedirectCode(int httpStatusCode)
+  {
+    return httpStatusCode >= 300 && httpStatusCode <= 399;
+  }
+
+  /**
+   * Checks if HTTP status code is a success code.
+   * @param httpStatusCode HTTP status code to check.
+   * @return True for success status code.
+   */
+  public static boolean isSuccessCode(int httpStatusCode)
+  {
+    return httpStatusCode >= 200 && httpStatusCode <= 299;
+  }
+
+  public HttpClient()
   {
     this.ptr = ctor(this);
     this.disposer = new Disposer(this, new DisposeWrapper(this.ptr));
   }
 
-  public abstract ServerResponse httpGET(String url, List<HeaderEntry> headers);
+  private final Disposer disposer;
+  protected final long ptr;
+
+  /**
+   * Performs a HTTP request.
+   * @param request HttpRequest
+   * @return server response
+   */
+  public abstract ServerResponse request(final HttpRequest request);
 
   @Override
   public void dispose()

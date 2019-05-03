@@ -175,7 +175,7 @@ static void JNICALL JniSetLogSystem(JNIEnv* env, jclass clazz, jlong ptr, jlong 
   CATCH_AND_THROW(env)
 }
 
-static void JNICALL JniSetWebRequest(JNIEnv* env, jclass clazz, jlong ptr, jlong webRequestPtr)
+static void JNICALL JniSetHttpClient(JNIEnv* env, jclass clazz, jlong ptr, jlong webRequestPtr)
 {
   AdblockPlus::JsEnginePtr& engine = GetJsEnginePtrRef(ptr);
 
@@ -242,7 +242,7 @@ static JNINativeMethod methods[] =
   { (char*)"setDefaultFileSystem", (char*)"(JLjava/lang/String;)V", (void*)JniSetDefaultFileSystem },
   { (char*)"setLogSystem", (char*)"(JJ)V", (void*)JniSetLogSystem },
   { (char*)"setDefaultLogSystem", (char*)"(J)V", (void*)JniSetDefaultLogSystem },
-  { (char*)"setWebRequest", (char*)"(JJ)V", (void*)JniSetWebRequest },
+  { (char*)"setHttpClient", (char*)"(JJ)V", (void*)JniSetHttpClient },
 
   { (char*)"newValue", (char*)"(JJ)" TYP("JsValue"), (void*)JniNewLongValue },
   { (char*)"newValue", (char*)"(JZ)" TYP("JsValue"), (void*)JniNewBooleanValue },

@@ -31,6 +31,7 @@ import org.adblockplus.libadblockplus.Filter;
 import org.adblockplus.libadblockplus.FilterChangeCallback;
 import org.adblockplus.libadblockplus.FilterEngine;
 import org.adblockplus.libadblockplus.FilterEngine.ContentType;
+import org.adblockplus.libadblockplus.HttpClient;
 import org.adblockplus.libadblockplus.IsAllowedConnectionCallback;
 import org.adblockplus.libadblockplus.JsEngine;
 import org.adblockplus.libadblockplus.JsValue;
@@ -39,7 +40,6 @@ import org.adblockplus.libadblockplus.ShowNotificationCallback;
 import org.adblockplus.libadblockplus.Subscription;
 import org.adblockplus.libadblockplus.UpdateAvailableCallback;
 import org.adblockplus.libadblockplus.UpdateCheckDoneCallback;
-import org.adblockplus.libadblockplus.WebRequest;
 
 import android.content.Context;
 import android.content.pm.PackageInfo;
@@ -68,7 +68,7 @@ public final class AdblockEngine
   private volatile JsEngine jsEngine;
   private volatile FilterEngine filterEngine;
   private volatile LogSystem logSystem;
-  private volatile WebRequest webRequest;
+  private volatile HttpClient httpClient;
   private volatile UpdateAvailableCallback updateAvailableCallback;
   private volatile UpdateCheckDoneCallback updateCheckDoneCallback;
   private volatile FilterChangeCallback filterChangeCallback;
@@ -126,8 +126,8 @@ public final class AdblockEngine
   {
     private Context context;
     private Map<String, Integer> urlToResourceIdMap;
-    private AndroidWebRequestResourceWrapper.Storage resourceStorage;
-    private AndroidWebRequest androidWebRequest;
+    private AndroidHttpClientResourceWrapper.Storage resourceStorage;
+    private AndroidHttpClient androidHttpClient;
     private AppInfo appInfo;
     private String basePath;
     private IsAllowedConnectionCallback isAllowedConnectionCallback;
@@ -140,7 +140,7 @@ public final class AdblockEngine
       engine.elemhideEnabled = true;
 
       // we can't create JsEngine and FilterEngine right now as it starts to download subscriptions
-      // and requests (AndroidWebRequest and probbaly wrappers) are not specified yet
+      // and requests (AndroidHttpClient and probably wrappers) are not specified yet
       this.appInfo = appInfo;
       this.basePath = basePath;
     }
@@ -153,7 +153,7 @@ public final class AdblockEngine
 
     public Builder preloadSubscriptions(Context context,
                                         Map<String, Integer> urlToResourceIdMap,
-                                        AndroidWebRequestResourceWrapper.Storage storage)
+                                        AndroidHttpClientResourceWrapper.Storage storage)
     {
       this.context = context;
       this.urlToResourceIdMap = urlToResourceIdMap;
@@ -193,14 +193,14 @@ public final class AdblockEngine
 
     private void initRequests()
     {
-      androidWebRequest = new AndroidWebRequest(engine.elemhideEnabled, true);
-      engine.webRequest = androidWebRequest;
+      androidHttpClient = new AndroidHttpClient(true, "UTF-8");
+      engine.httpClient = androidHttpClient;
 
       if (urlToResourceIdMap != null)
       {
-        AndroidWebRequestResourceWrapper wrapper = new AndroidWebRequestResourceWrapper(
-          context, engine.webRequest, urlToResourceIdMap, resourceStorage);
-        wrapper.setListener(new AndroidWebRequestResourceWrapper.Listener()
+        AndroidHttpClientResourceWrapper wrapper = new AndroidHttpClientResourceWrapper(
+          context, engine.httpClient, urlToResourceIdMap, resourceStorage);
+        wrapper.setListener(new AndroidHttpClientResourceWrapper.Listener()
         {
           @Override
           public void onIntercepted(String url, int resourceId)
@@ -213,7 +213,7 @@ public final class AdblockEngine
           }
         });
 
-        engine.webRequest = wrapper;
+        engine.httpClient = wrapper;
       }
     }
 
@@ -239,14 +239,14 @@ public final class AdblockEngine
     {
       initRequests();
 
-      // webRequest should be ready to be used passed right after JsEngine is created
+      // httpClient should be ready to be used passed right after JsEngine is created
       createEngines();
 
       initCallbacks();
 
       if (!engine.elemhideEnabled)
       {
-        androidWebRequest.updateSubscriptionURLs(engine.filterEngine);
+        androidHttpClient.updateSubscriptionURLs(engine.filterEngine);
       }
 
       return engine;
@@ -257,7 +257,7 @@ public final class AdblockEngine
       engine.jsEngine = new JsEngine(appInfo);
       engine.jsEngine.setDefaultFileSystem(basePath);
 
-      engine.jsEngine.setWebRequest(engine.webRequest);
+      engine.jsEngine.setHttpClient(engine.httpClient);
 
       engine.logSystem = new AndroidLogSystem();
       engine.jsEngine.setLogSystem(engine.logSystem);
@@ -328,10 +328,10 @@ public final class AdblockEngine
       this.logSystem = null;
     }
 
-    if (this.webRequest != null)
+    if (this.httpClient != null)
     {
-      this.webRequest.dispose();
-      this.webRequest = null;
+      this.httpClient.dispose();
+      this.httpClient = null;
     }
   }
 

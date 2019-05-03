@@ -156,7 +156,7 @@ public class SingleInstanceEngineProvider implements AdblockEngineProvider
         builder.preloadSubscriptions(
           context,
           urlToResourceIdMap,
-          new AndroidWebRequestResourceWrapper.SharedPrefsStorage(preloadedSubscriptionsPrefs));
+          new AndroidHttpClientResourceWrapper.SharedPrefsStorage(preloadedSubscriptionsPrefs));
       }
 
       engine = builder.build();

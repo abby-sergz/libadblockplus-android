@@ -17,7 +17,8 @@
 
 package org.adblockplus.libadblockplus.tests;
 
-import org.adblockplus.libadblockplus.android.AndroidWebRequest;
+import org.adblockplus.libadblockplus.FilterEngine;
+import org.adblockplus.libadblockplus.android.AndroidHttpClient;
 import org.adblockplus.libadblockplus.JsValue;
 import org.adblockplus.libadblockplus.ServerResponse;
 
@@ -26,14 +27,14 @@ import org.junit.Test;
 import java.net.MalformedURLException;
 import java.util.List;
 
-public class AndroidWebRequestTest extends BaseJsTest
+public class AndroidHttpClientTest extends BaseJsTest
 {
   @Override
   protected void setUp() throws Exception
   {
     super.setUp();
 
-    jsEngine.setWebRequest(new AndroidWebRequest(true, true));
+    jsEngine.setHttpClient(new AndroidHttpClient(true, "UTF-8"));
   }
 
   @Test

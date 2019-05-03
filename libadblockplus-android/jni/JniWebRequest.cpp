@@ -19,17 +19,33 @@
 #include "JniWebRequest.h"
 
 // precached in JNI_OnLoad and released in JNI_OnUnload
+JniGlobalReference<jclass>* httpRequestClass;
+jmethodID httpRequestClassCtor;
+
 JniGlobalReference<jclass>* headerEntryClass;
 JniGlobalReference<jclass>* serverResponseClass;
+jfieldID responseField;
 
 void JniWebRequest_OnLoad(JavaVM* vm, JNIEnv* env, void* reserved)
 {
+  httpRequestClass = new JniGlobalReference<jclass>(env, env->FindClass(PKG("HttpRequest")));
+  httpRequestClassCtor = env->GetMethodID(httpRequestClass->Get(), "<init>",
+      "(Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Z)V");
+
   headerEntryClass = new JniGlobalReference<jclass>(env, env->FindClass(PKG("HeaderEntry")));
   serverResponseClass = new JniGlobalReference<jclass>(env, env->FindClass(PKG("ServerResponse")));
+
+  responseField = env->GetFieldID(serverResponseClass->Get(), "response", "Ljava/nio/ByteBuffer;");
 }
 
 void JniWebRequest_OnUnload(JavaVM* vm, JNIEnv* env, void* reserved)
 {
+  if (httpRequestClass)
+  {
+    delete httpRequestClass;
+    httpRequestClass = NULL;
+  }
+
   if (headerEntryClass)
   {
     delete headerEntryClass;
@@ -70,28 +86,36 @@ AdblockPlus::ServerResponse JniWebRequest::GET(const std::string& url,
   jmethodID method = env->GetMethodID(
       *JniLocalReference<jclass>(*env,
           env->GetObjectClass(GetCallbackObject())),
-      "httpGET",
-      "(Ljava/lang/String;Ljava/util/List;)" TYP("ServerResponse"));
+      "request",
+      "(" TYP("HttpRequest") ")" TYP("ServerResponse"));
 
   AdblockPlus::ServerResponse sResponse;
   sResponse.status = AdblockPlus::IWebRequest::NS_ERROR_FAILURE;
 
   if (method)
   {
-    JniLocalReference<jobject> arrayList(*env, NewJniArrayList(*env));
-    jmethodID addMethod = JniGetAddToListMethod(*env, *arrayList);
+    jstring jUrl = JniStdStringToJava(*env, url);
+
+    std::string stdRequestMethod = "GET";
+    jstring jRequestMethod = JniStdStringToJava(*env, stdRequestMethod);
+
+    JniLocalReference<jobject> jHeaders(*env, NewJniArrayList(*env));
+    jmethodID addMethod = JniGetAddToListMethod(*env, *jHeaders);
 
     for (AdblockPlus::HeaderList::const_iterator it = requestHeaders.begin(),
         end = requestHeaders.end(); it != end; it++)
     {
       JniLocalReference<jobject> headerEntry(*env, NewTuple(*env, it->first, it->second));
-      JniAddObjectToList(*env, *arrayList, addMethod, *headerEntry);
+      JniAddObjectToList(*env, *jHeaders, addMethod, *headerEntry);
     }
 
+    jobject jHttpRequest = env->NewObject(
+      httpRequestClass->Get(),
+      httpRequestClassCtor,
+      jUrl, jRequestMethod, *jHeaders, true);
+
     JniLocalReference<jobject> response(*env,
-        env->CallObjectMethod(GetCallbackObject(), method,
-            *JniLocalReference<jstring>(*env, env->NewStringUTF(url.c_str())),
-            *arrayList));
+        env->CallObjectMethod(GetCallbackObject(), method, jHttpRequest));
 
     if (!env->ExceptionCheck())
     {
@@ -101,10 +125,15 @@ AdblockPlus::ServerResponse JniWebRequest::GET(const std::string& url,
                                                 serverResponseClass->Get(),
                                                 *response,
                                                 "responseStatus");
-      sResponse.responseText = JniGetStringField(*env,
-                                                 serverResponseClass->Get(),
-                                                 *response,
-                                                 "response");
+      jobject jByteBuffer = env->GetObjectField(*response, responseField);
+
+      if (jByteBuffer)
+      {
+        jlong responseSize = env->GetDirectBufferCapacity(jByteBuffer);
+        const char* responseBuffer = reinterpret_cast<const char*>(env->GetDirectBufferAddress(jByteBuffer));
+        std::string responseText(responseBuffer, responseSize);
+        sResponse.responseText = responseText;
+      }
 
       // map headers
       jobjectArray responseHeadersArray = JniGetStringArrayField(*env,
@@ -153,7 +182,7 @@ static JNINativeMethod methods[] =
   { (char*)"dtor", (char*)"(J)V", (void*)JniDtor }
 };
 
-extern "C" JNIEXPORT void JNICALL Java_org_adblockplus_libadblockplus_WebRequest_registerNatives(JNIEnv *env, jclass clazz)
+extern "C" JNIEXPORT void JNICALL Java_org_adblockplus_libadblockplus_HttpClient_registerNatives(JNIEnv *env, jclass clazz)
 {
   env->RegisterNatives(clazz, methods, sizeof(methods) / sizeof(methods[0]));
 }

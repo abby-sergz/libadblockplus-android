@@ -33,7 +33,7 @@ public class NotificationTest extends BaseJsTest
   {
     super.setUp();
 
-    jsEngine.setWebRequest(new LazyWebRequest());
+    jsEngine.setHttpClient(new LazyWebRequest());
     filterEngine = new FilterEngine(jsEngine);
   }
 

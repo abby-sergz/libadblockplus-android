@@ -20,7 +20,6 @@ package org.adblockplus.libadblockplus.android.webviewapp;
 import android.content.Context;
 
 import org.adblockplus.libadblockplus.android.AdblockEngine;
-import org.adblockplus.libadblockplus.android.AndroidWebRequestResourceWrapper;
 import org.adblockplus.libadblockplus.android.SingleInstanceEngineProvider;
 import org.adblockplus.libadblockplus.android.settings.AdblockHelper;
 
