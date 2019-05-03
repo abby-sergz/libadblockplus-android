@@ -20,12 +20,9 @@ package org.adblockplus.libadblockplus.android.webview;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
-import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -46,6 +43,7 @@ import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import org.adblockplus.libadblockplus.AdblockPlusException;
 import org.adblockplus.libadblockplus.FilterEngine;
 import org.adblockplus.libadblockplus.Subscription;
 import org.adblockplus.libadblockplus.android.AdblockEngine;
@@ -58,6 +56,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
@@ -69,15 +68,6 @@ public class AdblockWebView extends WebView
 {
   private static final String TAG = Utils.getTag(AdblockWebView.class);
 
-  /**
-   * Default (in some conditions) start redraw delay after DOM modified with injected JS (millis)
-   */
-  public static final int ALLOW_DRAW_DELAY = 200;
-  /*
-     The value could be different for devices and completely unclear why we need it and
-     how to measure actual value
-  */
-
   protected static final String HEADER_REFERRER = "Referer";
   protected static final String HEADER_REQUESTED_WITH = "X-Requested-With";
   protected static final String HEADER_REQUESTED_WITH_XMLHTTPREQUEST = "XMLHttpRequest";
@@ -86,6 +76,7 @@ public class AdblockWebView extends WebView
   private static final String BRIDGE_TOKEN = "{{BRIDGE}}";
   private static final String DEBUG_TOKEN = "{{DEBUG}}";
   private static final String HIDE_TOKEN = "{{HIDE}}";
+  private static final String HIDDEN_TOKEN = "{{HIDDEN_FLAG}}";
   private static final String BRIDGE = "jsBridge";
   private static final String[] EMPTY_ARRAY = {};
   private static final String EMPTY_ELEMHIDE_ARRAY_STRING = "[]";
@@ -95,13 +86,10 @@ public class AdblockWebView extends WebView
   private static final Pattern RE_IMAGE = Pattern.compile("\\.(?:gif|png|jpe?g|bmp|ico)$", Pattern.CASE_INSENSITIVE);
   private static final Pattern RE_FONT = Pattern.compile("\\.(?:ttf|woff)$", Pattern.CASE_INSENSITIVE);
   private static final Pattern RE_HTML = Pattern.compile("\\.html?$", Pattern.CASE_INSENSITIVE);
-
-  private volatile boolean addDomListener = true;
   private boolean adblockEnabled = true;
   private boolean debugMode;
   private AdblockEngineProvider provider;
   private Integer loadError;
-  private int allowDrawDelay = ALLOW_DRAW_DELAY;
   private WebChromeClient extWebChromeClient;
   private WebViewClient extWebViewClient;
   private WebViewClient intWebViewClient;
@@ -113,12 +101,7 @@ public class AdblockWebView extends WebView
   private Object elemHideThreadLockObject = new Object();
   private ElemHideThread elemHideThread;
   private boolean loading;
-  private volatile boolean elementsHidden = false;
-  private final Handler handler = new Handler();
-
-  // used to prevent user see flickering for elements to hide
-  // for some reason it's rendered even if element is hidden on 'dom ready' event
-  private volatile boolean allowDraw = true;
+  private String elementsHiddenFlag;
 
   public AdblockWebView(Context context)
   {
@@ -136,23 +119,6 @@ public class AdblockWebView extends WebView
   {
     super(context, attrs, defStyle);
     initAbp();
-  }
-
-  /**
-   * Warning: do not rename (used in injected JS by method name)
-   * @param value set if one need to set DOM listener
-   */
-  @JavascriptInterface
-  public void setAddDomListener(boolean value)
-  {
-    d("addDomListener=" + value);
-    this.addDomListener = value;
-  }
-
-  @JavascriptInterface
-  public boolean getAddDomListener()
-  {
-    return addDomListener;
   }
 
   public boolean isAdblockEnabled()
@@ -223,9 +189,10 @@ public class AdblockWebView extends WebView
   private String readScriptFile(String filename) throws IOException
   {
     return Utils
-      .readAssetAsString(getContext(), filename, ASSETS_CHARSET_NAME)
-      .replace(BRIDGE_TOKEN, BRIDGE)
-      .replace(DEBUG_TOKEN, (debugMode ? "" : "//"));
+        .readAssetAsString(getContext(), filename, ASSETS_CHARSET_NAME)
+        .replace(BRIDGE_TOKEN, BRIDGE)
+        .replace(DEBUG_TOKEN, (debugMode ? "" : "//"))
+        .replace(HIDDEN_TOKEN, elementsHiddenFlag);
   }
 
   private void runScript(String script)
@@ -415,12 +382,12 @@ public class AdblockWebView extends WebView
       if (extWebChromeClient != null)
       {
         extWebChromeClient.onExceededDatabaseQuota(url, databaseIdentifier, quota,
-          estimatedDatabaseSize, totalQuota, quotaUpdater);
+            estimatedDatabaseSize, totalQuota, quotaUpdater);
       }
       else
       {
         super.onExceededDatabaseQuota(url, databaseIdentifier, quota,
-          estimatedDatabaseSize, totalQuota, quotaUpdater);
+            estimatedDatabaseSize, totalQuota, quotaUpdater);
       }
     }
 
@@ -495,9 +462,9 @@ public class AdblockWebView extends WebView
     public boolean onConsoleMessage(ConsoleMessage consoleMessage)
     {
       d("JS: level=" + consoleMessage.messageLevel()
-        + ", message=\"" + consoleMessage.message() + "\""
-        + ", sourceId=\"" + consoleMessage.sourceId() + "\""
-        + ", line=" + consoleMessage.lineNumber());
+          + ", message=\"" + consoleMessage.message() + "\""
+          + ", sourceId=\"" + consoleMessage.sourceId() + "\""
+          + ", line=" + consoleMessage.lineNumber());
 
       if (extWebChromeClient != null)
       {
@@ -552,25 +519,7 @@ public class AdblockWebView extends WebView
     public void onProgressChanged(WebView view, int newProgress)
     {
       d("Loading progress=" + newProgress + "%");
-
-      // addDomListener is changed to 'false' in `setAddDomListener` invoked from injected JS
-      if (getAddDomListener() && loadError == null && injectJs != null)
-      {
-        d("Injecting script");
-        runScript(injectJs);
-
-        if (allowDraw && loading)
-        {
-          startPreventDrawing();
-        }
-      }
-
-      // workaround for the issue: https://issues.adblockplus.org/ticket/5303
-      if (newProgress == 100 && !allowDraw)
-      {
-        w("Workaround for the issue #5303");
-        stopPreventDrawing();
-      }
+      tryInjectJs();
 
       if (extWebChromeClient != null)
       {
@@ -593,24 +542,13 @@ public class AdblockWebView extends WebView
     }
   };
 
-  public int getAllowDrawDelay()
+  private void tryInjectJs()
   {
-    return allowDrawDelay;
-  }
-
-  /**
-   * Set start redraw delay after DOM modified with injected JS
-   * (used to prevent flickering after 'DOM ready')
-   * @param allowDrawDelay delay (in millis)
-   */
-  public void setAllowDrawDelay(int allowDrawDelay)
-  {
-    if (allowDrawDelay < 0)
+    if (loadError == null && injectJs != null)
     {
-      throw new IllegalArgumentException("Negative value is not allowed");
+      d("Injecting script");
+      runScript(injectJs);
     }
-
-    this.allowDrawDelay = allowDrawDelay;
   }
 
   @Override
@@ -709,9 +647,9 @@ public class AdblockWebView extends WebView
     public void onReceivedError(WebView view, int errorCode, String description, String failingUrl)
     {
       e("Load error:" +
-        " code=" + errorCode +
-        " with description=" + description +
-        " for url=" + failingUrl);
+          " code=" + errorCode +
+          " with description=" + description +
+          " for url=" + failingUrl);
       loadError = errorCode;
 
       stopAbpLoading();
@@ -934,9 +872,9 @@ public class AdblockWebView extends WebView
       String url = request.getUrl().toString();
 
       boolean isXmlHttpRequest =
-        request.getRequestHeaders().containsKey(HEADER_REQUESTED_WITH) &&
-          HEADER_REQUESTED_WITH_XMLHTTPREQUEST.equals(
-            request.getRequestHeaders().get(HEADER_REQUESTED_WITH));
+          request.getRequestHeaders().containsKey(HEADER_REQUESTED_WITH) &&
+              HEADER_REQUESTED_WITH_XMLHTTPREQUEST.equals(
+                  request.getRequestHeaders().get(HEADER_REQUESTED_WITH));
 
       String referrer = request.getRequestHeaders().get(HEADER_REFERRER);
       String[] referrers;
@@ -965,6 +903,12 @@ public class AdblockWebView extends WebView
   {
     addJavascriptInterface(this, BRIDGE);
     initClients();
+    initRandom();
+  }
+
+  private void initRandom()
+  {
+    elementsHiddenFlag = "abp" + Math.abs(new Random().nextLong());
   }
 
   private void initClients()
@@ -1008,9 +952,9 @@ public class AdblockWebView extends WebView
               };
 
             List<Subscription> subscriptions = provider
-              .getEngine()
-              .getFilterEngine()
-              .getListedSubscriptions();
+                .getEngine()
+                .getFilterEngine()
+                .getListedSubscriptions();
 
             try
             {
@@ -1020,8 +964,8 @@ public class AdblockWebView extends WebView
                 for (Subscription eachSubscription : subscriptions)
                 {
                   d("Subscribed to "
-                    + (eachSubscription.isDisabled() ? "disabled" : "enabled")
-                    + " " + eachSubscription);
+                      + (eachSubscription.isDisabled() ? "disabled" : "enabled")
+                      + " " + eachSubscription);
                 }
               }
             }
@@ -1041,7 +985,10 @@ public class AdblockWebView extends WebView
             }
             else
             {
+              // elemhide
               d("Requesting elemhide selectors from AdblockEngine for " + url + " in " + this);
+
+
               List<String> selectors = provider
                 .getEngine()
                 .getElementHidingSelectors(url, domain, referrers);
@@ -1077,11 +1024,12 @@ public class AdblockWebView extends WebView
       }
     }
 
-    private void finish(String result)
+    private void finish(String selectorsString)
     {
       isFinished.set(true);
-      d("Setting elemhide string " + result.length() + " bytes");
-      elemHideSelectorsString = result;
+      d("Setting elemhide string " + selectorsString.length() + " bytes");
+      elemHideSelectorsString = selectorsString;
+
       onFinished();
     }
 
@@ -1138,7 +1086,7 @@ public class AdblockWebView extends WebView
     if (provider == null)
     {
       setProvider(new SingleInstanceEngineProvider(
-        getContext(), AdblockEngine.BASE_PATH_DIRECTORY, debugMode));
+          getContext(), AdblockEngine.BASE_PATH_DIRECTORY, debugMode));
     }
   }
 
@@ -1147,13 +1095,12 @@ public class AdblockWebView extends WebView
     d("Start loading " + newUrl);
 
     loading = true;
-    addDomListener = true;
-    elementsHidden = false;
     loadError = null;
     url = newUrl;
 
     if (url != null)
     {
+      // elemhide
       elemHideLatch = new CountDownLatch(1);
       synchronized (elemHideThreadLockObject)
       {
@@ -1177,7 +1124,7 @@ public class AdblockWebView extends WebView
         injectJs = readScriptFile("inject.js").replace(HIDE_TOKEN, readScriptFile("css.js"));
       }
     }
-    catch (IOException e)
+    catch (final IOException e)
     {
       e("Failed to read script", e);
     }
@@ -1283,7 +1230,6 @@ public class AdblockWebView extends WebView
     d("Stop abp loading");
 
     loading = false;
-    stopPreventDrawing();
     clearReferrers();
 
     synchronized (elemHideThreadLockObject)
@@ -1294,86 +1240,6 @@ public class AdblockWebView extends WebView
       }
     }
   }
-
-  // warning: do not rename (used in injected JS by method name)
-  @JavascriptInterface
-  public void setElementsHidden(boolean value)
-  {
-    // invoked with 'true' by JS callback when DOM is loaded
-    elementsHidden = value;
-
-    // fired on worker thread, but needs to be invoked on main thread
-    if (value)
-    {
-//     handler.post(allowDrawRunnable);
-//     should work, but it's not working:
-//     the user can see element visible even though it was hidden on dom event
-
-      if (allowDrawDelay > 0)
-      {
-        d("Scheduled 'allow drawing' invocation in " + allowDrawDelay + " ms");
-      }
-      handler.postDelayed(allowDrawRunnable, allowDrawDelay);
-    }
-  }
-
-  // warning: do not rename (used in injected JS by method name)
-  @JavascriptInterface
-  public boolean isElementsHidden()
-  {
-    return elementsHidden;
-  }
-
-  @Override
-  public void onPause()
-  {
-    handler.removeCallbacks(allowDrawRunnable);
-    super.onPause();
-  }
-
-  @Override
-  protected void onDraw(Canvas canvas)
-  {
-    if (allowDraw)
-    {
-      super.onDraw(canvas);
-    }
-    else
-    {
-      w("Prevent drawing");
-      drawEmptyPage(canvas);
-    }
-  }
-
-  private void drawEmptyPage(Canvas canvas)
-  {
-    // assuming default color is WHITE
-    canvas.drawColor(Color.WHITE);
-  }
-
-  protected void startPreventDrawing()
-  {
-    w("Start prevent drawing");
-
-    allowDraw = false;
-  }
-
-  protected void stopPreventDrawing()
-  {
-    d("Stop prevent drawing, invalidating");
-
-    allowDraw = true;
-    invalidate();
-  }
-
-  private Runnable allowDrawRunnable = new Runnable()
-  {
-    @Override
-    public void run()
-    {
-      stopPreventDrawing();
-    }
-  };
 
   // warning: do not rename (used in injected JS by method name)
   @JavascriptInterface
@@ -1392,11 +1258,9 @@ public class AdblockWebView extends WebView
         elemHideLatch.await();
         d("Elemhide selectors ready, " + elemHideSelectorsString.length() + " bytes");
 
-        clearReferrers();
-
         return elemHideSelectorsString;
       }
-      catch (InterruptedException e)
+      catch (final InterruptedException e)
       {
         w("Interrupted, returning empty selectors list");
         return EMPTY_ELEMHIDE_ARRAY_STRING;
