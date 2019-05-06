@@ -136,24 +136,52 @@ public final class FilterEngine implements Disposable
     removeShowNotificationCallback(this.ptr);
   }
 
-  public Filter matches(final String url, final ContentType contentType, final String documentUrl)
+  /**
+   * Checks if any active filter matches the supplied URL.
+   * @param url url URL to match.
+   * @param contentType Content type mask of the requested resource.
+   * @param referrersChain Chain of documents requesting the resource, starting
+   *                       with the current resource's parent frame, ending with the
+   *                       top-level frame.
+   * @param siteKey sitekey or null/empty string
+   * @return Matching filter, or a `null` if there was no match.
+   */
+  public Filter matches(final String url, final ContentType contentType,
+                        final List<String> referrerChain, final String siteKey)
   {
-    return matches(this.ptr, url, contentType, documentUrl);
+    return matches(this.ptr, url, contentType, referrerChain, siteKey);
   }
 
-  public Filter matches(final String url, final ContentType contentType, final String[] documentUrls)
+  /**
+   * Check if the document with URL is whitelisted
+   * @param url URL
+   * @param referrerChain Chain of document URLs requesting the document,
+   *                      starting with the current document's parent frame, ending with
+   *                      the top-level frame.
+   * @param siteKey sitekey or null/empty string
+   * @return `true` if the URL is whitelisted
+   */
+  public boolean isDocumentWhitelisted(final String url,
+                                       final List<String> referrerChain,
+                                       final String siteKey)
   {
-    return matches(this.ptr, url, contentType, documentUrls);
+    return isDocumentWhitelisted(this.ptr, url, referrerChain, siteKey);
   }
 
-  public boolean isDocumentWhitelisted(String url, String[] documentUrls)
+  /**
+   * Check if the element hiding is whitelisted
+   * @param url URL
+   * @param referrerChain Chain of document URLs requesting the document,
+   *                      starting with the current document's parent frame, ending with
+   *                      the top-level frame.
+   * @param siteKey sitekey or null/empty string
+   * @return `true` if element hiding is whitelisted for the supplied URL.
+   */
+  public boolean isElemhideWhitelisted(final String url,
+                                       final List<String> referrerChain,
+                                       final String siteKey)
   {
-    return isDocumentWhitelisted(this.ptr, url, documentUrls);
-  }
-
-  public boolean isElemhideWhitelisted(String url, String[] documentUrls)
-  {
-    return isElemhideWhitelisted(this.ptr, url, documentUrls);
+    return isElemhideWhitelisted(this.ptr, url, referrerChain, siteKey);
   }
 
   public JsValue getPref(final String pref)
@@ -264,13 +292,16 @@ public final class FilterEngine implements Disposable
 
   private final static native JsValue getPref(long ptr, String pref);
 
-  private final static native Filter matches(long ptr, String url, ContentType contentType, String documentUrl);
+  private final static native Filter matches(long ptr, String url, ContentType contentType,
+                                             List<String> referrerChain, final String siteKey);
 
-  private final static native Filter matches(long ptr, String url, ContentType contentType, String[] documentUrls);
+  private final static native boolean isDocumentWhitelisted(long ptr, String url,
+                                                            List<String> referrerChain,
+                                                            String siteKey);
 
-  private final static native boolean isDocumentWhitelisted(long ptr, String url, String[] documentUrls);
-
-  private final static native boolean isElemhideWhitelisted(long ptr, String url, String[] documentUrls);
+  private final static native boolean isElemhideWhitelisted(long ptr, String url,
+                                                            List<String> referrerChain,
+                                                            String siteKey);
 
   private final static native void setPref(long ptr, String pref, long valuePtr);
 

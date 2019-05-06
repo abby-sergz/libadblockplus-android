@@ -521,14 +521,15 @@ public final class AdblockEngine
     }
   }
 
-  public boolean matches(final String fullUrl, final ContentType contentType, final String[] referrerChainArray)
+  public boolean matches(final String fullUrl, final ContentType contentType,
+                         final List<String> referrerChain, final String siteKey)
   {
     if (!enabled)
     {
       return false;
     }
 
-    final Filter filter = this.filterEngine.matches(fullUrl, contentType, referrerChainArray);
+    final Filter filter = this.filterEngine.matches(fullUrl, contentType, referrerChain, siteKey);
 
     if (filter == null)
     {
@@ -545,7 +546,7 @@ public final class AdblockEngine
         JsValue jsText = filter.getProperty("text");
         try
         {
-          if (referrerChainArray.length == 0 && (jsText.toString()).contains("||"))
+          if (referrerChain.isEmpty() && (jsText.toString()).contains("||"))
           {
             return false;
           }
@@ -567,12 +568,14 @@ public final class AdblockEngine
     }
   }
 
-  public boolean isDocumentWhitelisted(final String url, final String[] referrerChainArray)
+  public boolean isDocumentWhitelisted(final String url,
+                                       final List<String> referrerChain,
+                                       final String sitekey)
   {
-    return this.filterEngine.isDocumentWhitelisted(url, referrerChainArray);
+    return this.filterEngine.isDocumentWhitelisted(url, referrerChain, sitekey);
   }
 
-  public boolean isDomainWhitelisted(final String url, final String[] referrerChainArray)
+  public boolean isDomainWhitelisted(final String url, final List<String> referrerChain)
   {
     if (whitelistedDomains == null)
     {
@@ -580,11 +583,7 @@ public final class AdblockEngine
     }
 
     // using Set to remove duplicates
-    Set<String> referrersAndResourceUrls = new HashSet<String>();
-    if (referrerChainArray != null)
-    {
-      referrersAndResourceUrls.addAll(Arrays.asList(referrerChainArray));
-    }
+    Set<String> referrersAndResourceUrls = new HashSet<String>(referrerChain);
     referrersAndResourceUrls.add(url);
 
     for (String eachUrl : referrersAndResourceUrls)
@@ -598,12 +597,18 @@ public final class AdblockEngine
     return false;
   }
 
-  public boolean isElemhideWhitelisted(final String url, final String[] referrerChainArray)
+  public boolean isElemhideWhitelisted(final String url,
+                                       final List<String> referrerChain,
+                                       final String sitekey)
   {
-    return this.filterEngine.isElemhideWhitelisted(url, referrerChainArray);
+    return this.filterEngine.isElemhideWhitelisted(url, referrerChain, sitekey);
   }
 
-  public List<String> getElementHidingSelectors(final String url, final String domain, final String[] referrerChainArray)
+  public List<String> getElementHidingSelectors(
+      final String url,
+      final String domain,
+      final List<String> referrerChain,
+      final String sitekey)
   {
     /*
      * Issue 3364 (https://issues.adblockplus.org/ticket/3364) introduced the
@@ -621,9 +626,9 @@ public final class AdblockEngine
      */
     if (!this.enabled
         || !this.elemhideEnabled
-        || this.isDomainWhitelisted(url, referrerChainArray)
-        || this.isDocumentWhitelisted(url, referrerChainArray)
-        || this.isElemhideWhitelisted(url, referrerChainArray))
+        || this.isDomainWhitelisted(url, referrerChain)
+        || this.isDocumentWhitelisted(url, referrerChain, sitekey)
+        || this.isElemhideWhitelisted(url, referrerChain, sitekey))
     {
       return new ArrayList<String>();
     }

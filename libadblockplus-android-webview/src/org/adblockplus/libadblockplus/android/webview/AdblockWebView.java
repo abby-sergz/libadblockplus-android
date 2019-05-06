@@ -52,6 +52,7 @@ import org.adblockplus.libadblockplus.android.SingleInstanceEngineProvider;
 import org.adblockplus.libadblockplus.android.Utils;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -766,7 +767,7 @@ public class AdblockWebView extends WebView
 
     protected WebResourceResponse shouldInterceptRequest(
       WebView webview, String url, boolean isMainFrame,
-      boolean isXmlHttpRequest, String[] referrerChainArray)
+      boolean isXmlHttpRequest, final List<String> referrerChain)
     {
       synchronized (provider.getEngineLock())
       {
@@ -792,8 +793,10 @@ public class AdblockWebView extends WebView
           return null;
         }
 
+	final String siteKey = null;
+
         // whitelisted
-        if (provider.getEngine().isDomainWhitelisted(url, referrerChainArray))
+        if (provider.getEngine().isDomainWhitelisted(url, referrerChain))
         {
           w(url + " domain is whitelisted, allow loading");
 
@@ -801,7 +804,7 @@ public class AdblockWebView extends WebView
           return null;
         }
 
-        if (provider.getEngine().isDocumentWhitelisted(url, referrerChainArray))
+        if (provider.getEngine().isDocumentWhitelisted(url, referrerChain, siteKey))
         {
           w(url + " document is whitelisted, allow loading");
 
@@ -825,7 +828,7 @@ public class AdblockWebView extends WebView
         }
 
         // check if we should block
-        if (provider.getEngine().matches(url, contentType, referrerChainArray))
+        if (provider.getEngine().matches(url, contentType, referrerChain, siteKey))
         {
           w("Blocked loading " + url);
 
@@ -854,24 +857,29 @@ public class AdblockWebView extends WebView
                   request.getRequestHeaders().get(HEADER_REQUESTED_WITH));
 
       String referrer = request.getRequestHeaders().get(HEADER_REFERRER);
-      String[] referrers;
 
       if (referrer != null)
       {
         d("Header referrer for " + url + " is " + referrer);
         url2Referrer.put(url, referrer);
-
-        referrers = new String[]
-          {
-            referrer
-          };
       }
       else
       {
         w("No referrer header for " + url);
-        referrers = EMPTY_ARRAY;
       }
 
+      // reconstruct frames hierarchy
+      List<String> referrers = new ArrayList<>();
+      String parentUrl = url;
+      while ((parentUrl = url2Referrer.get(parentUrl)) != null)
+      {
+        if (referrers.contains(parentUrl))
+        {
+          w("Detected referrer loop, finished creating referrers list");
+          break;
+        }
+        referrers.add(0, parentUrl);
+      }
       return shouldInterceptRequest(view, url, request.isForMainFrame(), isXmlHttpRequest, referrers);
     }
   }
@@ -923,10 +931,8 @@ public class AdblockWebView extends WebView
           else
           {
             provider.waitForReady();
-            String[] referrers = new String[]
-              {
-                url
-              };
+            List<String> referrerChain = new ArrayList<String>(1);
+	    referrerChain.add(url);
 
             List<Subscription> subscriptions = provider
                 .getEngine()
@@ -965,10 +971,11 @@ public class AdblockWebView extends WebView
               // elemhide
               d("Requesting elemhide selectors from AdblockEngine for " + url + " in " + this);
 
+              final String siteKey = null;
 
               List<String> selectors = provider
                 .getEngine()
-                .getElementHidingSelectors(url, domain, referrers);
+                .getElementHidingSelectors(url, domain, referrerChain, siteKey);
 
               d("Finished requesting elemhide selectors, got " + selectors.size() + " in " + this);
               selectorsString = Utils.stringListToJsonArray(selectors);
