@@ -112,6 +112,7 @@ public class AdblockWebView extends WebView
   private String injectJs;
   private CountDownLatch elemHideLatch;
   private String elemHideSelectorsString;
+  private String elemHideEmuSelectorsString;
   private Object elemHideThreadLockObject = new Object();
   private ElemHideThread elemHideThread;
   private boolean loading;
@@ -1285,7 +1286,7 @@ public class AdblockWebView extends WebView
 
     if (url != null)
     {
-      // elemhide
+      // elemhide and elemhideemu
       elemHideLatch = new CountDownLatch(1);
       synchronized (elemHideThreadLockObject)
       {
@@ -1306,7 +1307,9 @@ public class AdblockWebView extends WebView
     {
       if (injectJs == null)
       {
-        injectJs = readScriptFile("inject.js").replace(HIDE_TOKEN, readScriptFile("css.js"));
+        StringBuffer sb = new StringBuffer();
+        sb.append(readScriptFile("inject.js").replace(HIDE_TOKEN, readScriptFile("css.js")));
+        injectJs = sb.toString();
       }
     }
     catch (final IOException e)
@@ -1448,6 +1451,33 @@ public class AdblockWebView extends WebView
       catch (final InterruptedException e)
       {
         w("Interrupted, returning empty selectors list");
+        return EMPTY_ELEMHIDE_ARRAY_STRING;
+      }
+    }
+  }
+
+  // warning: do not rename (used in injected JS by method name)
+  @JavascriptInterface
+  public String getElemhideEmulationSelectors()
+  {
+    if (elemHideLatch == null)
+    {
+      return EMPTY_ELEMHIDE_ARRAY_STRING;
+    }
+    else
+    {
+      try
+      {
+        // elemhideemu selectors list getting is started in startAbpLoad() in background thread
+        d("Waiting for elemhideemu selectors to be ready");
+        elemHideLatch.await();
+        d("Elemhideemu selectors ready, " + elemHideEmuSelectorsString.length() + " bytes");
+
+        return elemHideEmuSelectorsString;
+      }
+      catch (final InterruptedException e)
+      {
+        w("Interrupted, returning empty elemhideemu selectors list");
         return EMPTY_ELEMHIDE_ARRAY_STRING;
       }
     }

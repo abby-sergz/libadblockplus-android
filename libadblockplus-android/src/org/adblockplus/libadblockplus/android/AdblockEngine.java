@@ -130,6 +130,7 @@ public final class AdblockEngine
     private AppInfo appInfo;
     private String basePath;
     private IsAllowedConnectionCallback isAllowedConnectionCallback;
+    private Long v8IsolateProviderPtr;
 
     private AdblockEngine engine;
 
@@ -332,6 +333,7 @@ public final class AdblockEngine
       this.httpClient.dispose();
       this.httpClient = null;
     }
+
   }
 
   public boolean isFirstRun()
